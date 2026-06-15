@@ -39,8 +39,8 @@ class Motor(Node):
 
         self.current_speed = np.nan
         self.current_heading = np.nan
-        self.target_heading = np.nan
-        self.target_speed = np.nan
+        self.target_heading = None
+        self.target_speed = None
 
     def remap(self, error):
         outMin = 1540
@@ -107,7 +107,7 @@ class Motor(Node):
     
     def check_data(self):
         data_good = True
-        if self.current_heading == np.nan or self.current_speed == np.nan or self.target_heading == np.nan or self.target_speed == np.nan:
+        if np.isnan(self.current_heading) or np.isnan(self.current_speed) or self.target_heading is None or self.target_speed is None:
             data_good = False
 
         return data_good
