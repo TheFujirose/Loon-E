@@ -1,12 +1,12 @@
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float32MultiArray
+import numpy as np
+import time
 import busio
 import board
 from adafruit_motor import servo
 from adafruit_pca9685 import PCA9685
-import numpy as np
-import time
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import Float32MultiArray
 
 class Motor(Node):
     def __init__(self):
@@ -34,7 +34,6 @@ class Motor(Node):
         self.i = 0
         self.last_error = 0
         self.last_time = time.time()
-        self.min = -45
         self.max = 45
 
         self.current_speed = np.nan
@@ -42,11 +41,8 @@ class Motor(Node):
         self.target_heading = None
         self.target_speed = None
 
-    def remap(self, error):
-        outMin = 1540
-        outMax = 1880
-
-        output = outMin + ((abs(error) - self.max) / (self.min - self.max) * (outMax - outMin)) #inMin and inMax swapped: Bigger error -> turn more
+    def remap(self, error, outMin = 1540, outMax = 1880):
+        output = outMax + (abs(error) / self.max * (outMin - outMax)) #outMax and outMin swapped: Bigger difference -> turn more
         return output
     
     def get_fraction(self, pulse, min_pulse = 1120, max_pulse = 1880): #Convert value in microseconds to duty cycle in %
@@ -63,38 +59,42 @@ class Motor(Node):
 
         #calculate integral and clamp
         self.i = self.i + self.ki * current_error
-        if self.i < self.min:
-            self.i = self.min
+        if self.i < -self.max:
+            self.i = self.max
 
         elif self.i > self.max:
             self.i = self.max
 
         #calculate output and clamp
         output = self.kp * current_error + self.i * dt + self.kd * de
-        if output < self.min:
-            output = self.min
+        if output < -self.max:
+            output = -self.max
         
         elif output > self.max:
             output = self.max
 
-        output = self.remap(current_error)
+        remapped_output = self.remap(output)
         
         #change speed as needed
-        if self.current_speed < self.target_speed and self.factor < 1:
-            self.factor += 0.5
-        elif self.current_speed > self.target_speed and self.factor > 0.55:
-            self.factor -= 0.5
-
+        if self.current_speed < self.target_speed:
+            self.factor += 0.05
+            if self.factor > 1:
+                self.factor = 1
+        elif self.current_speed > self.target_speed:
+            self.factor -= 0.05
+            if self.factor < 0.55:
+                self.factor = 0.55
+        
         #set propeller speeds
         if current_error > 0: #right
             self.prop_l.fraction = self.factor #max forward
-            self.prop_r.fraction = self.get_fraction(output) * self.factor #forward based on PID
+            self.prop_r.fraction = self.get_fraction(remapped_output) * self.factor #forward based on PID
         else: #left
-            self.prop_l.fraction = self.get_fraction(output) * self.factor #forward based on PID
+            self.prop_l.fraction = self.get_fraction(remapped_output) * self.factor #forward based on PID
             self.prop_r.fraction = self.factor #max forward 
 
         #set rudder speeds
-        if output < self.min / 2:
+        if output < -self.max / 2:
             self.rudder.fraction = 0 #35 degrees right
         elif output > self.max / 2:
             self.rudder.fraction = 1 #35 degrees left
