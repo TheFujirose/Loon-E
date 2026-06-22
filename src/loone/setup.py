@@ -29,7 +29,8 @@ setup(
         'console_scripts': [
             'phone = loone.phone:main',
             'task = loone.task:main',
-            'motor = loone.motor:main'
+            'motor = loone.motor:main',
+            'led = loone.led:main',
         ],
     },
 )

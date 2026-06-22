@@ -6,4 +6,5 @@ def generate_launch_description():
         Node(package='loone', executable='phone', name='phone'),
         Node(package='loone', executable='task', name='task'),
         Node(package='loone', executable='motor', name='motor'),
+        Node(package='loone', executable='led', name='led'),
     ])
