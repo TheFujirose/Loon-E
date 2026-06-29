@@ -37,6 +37,7 @@ class Motor(Node):
         self._init_servos()
 
         self.factor = 0.75
+        self.center = 0.55
 
         self.kp = 1
         self.ki = 0
@@ -257,20 +258,56 @@ class Motor(Node):
         elif output > self.max / 2:
             self.rudder.fraction = 1    # 35° left
         else:
-            self.rudder.fraction = 0.55  # centred
+            self.rudder.fraction = self.center  # centred
             
         self.last_error = current_error
         self.last_time = current_time
         self.publish()
 
+    def reverse(self):
+        """Set PWM to move backwards"""
+        self.prop_l.fraction = 0 #max backward
+        self.prop_r.fraction = 0 #max backward
+        self.rudder.fraction = self.center #0 degrees
+    
+    def turn_in_place(self):
+        """Set PWM to turn in place"""
+        if np.sign(self.dir) == 1: #turn left
+            self.prop_l.fraction = self.get_fraction(1460) #min backward
+            self.prop_r.fraction = self.get_fraction(1540) #min forward 
+            self.rudder.fraction = self.center #0 degrees
+        
+        else: #turn right
+            self.prop_l.fraction = self.get_fraction(1540) #min forward
+            self.prop_r.fraction = self.get_fraction(1460) #min backward 
+            self.rudder.fraction = self.center #0 degrees
+    
+    def stop(self):
+        """Set propeller and rudder PWM to center/no motion"""
+        self.prop_l.fraction = 0.5 #no motion
+        self.prop_r.fraction = 0.5 #no motion
+        self.rudder.fraction = self.center #0 degrees
+
     def check_data(self):
-        """Return True if all required sensor and target data are available and valid."""
-        return not (
-            np.isnan(self.current_heading)
-            or np.isnan(self.current_speed)
-            or self.target_heading is None
-            or self.target_speed is None
-        )
+        """Executes action based on value of self.command"""
+        match self.command:
+            case -1: #reverse
+                self.reverse()
+
+            case 0: #stop
+                self.stop()
+
+            case 1: #drive
+                if (self.current_heading is not None
+                    and self.current_speed is not None
+                    and self.target_heading is not None
+                    and self.target_speed is not None):
+                    
+                    self.drive()
+            
+            case 2: #turn
+                if (self.dir is not None):
+                    self.turn_in_place()
 
     def phone_callback(self, msg):
         """Handle incoming phone telemetry and update current speed and heading.
@@ -291,10 +328,11 @@ class Motor(Node):
         """
         data = msg.data
         self.get_logger().info(f"Task: {msg.data}")
-        self.target_heading = data[1]
-        self.target_speed = data[2]
-        if self.check_data():
-            self.drive()
+        self.command = data[0]
+        self.target_speed = data[1]
+        self.target_heading = data[2]
+        self.dir = data[3]
+        self.check_data()
 
     def shutdown(self):
         """De-initialize the PCA9685 and release the I2C bus on node shutdown."""
@@ -304,8 +342,6 @@ class Motor(Node):
 def main(args=None):
     rclpy.init(args=args)
     motor = Motor()
-
-    # Add a try-except block to handle KeyboardInterrupt gracefully
     try:
         rclpy.spin(motor)
     except KeyboardInterrupt:

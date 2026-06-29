@@ -37,8 +37,6 @@ class Phone(Node):
         #self.get_logger().info(f"Phone: {msg.data}")
     
     def get_odometry(self):
-
-
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.HOST, self.PORT))

@@ -4,8 +4,8 @@
   <name>loone</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="iamsoon@todo.todo">iamsoon</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="mechatronicsclub@humber.ca">humberasv</maintainer>
+  <license>MIT</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
@@ -15,10 +15,12 @@
   <exec_depend>ros2launch</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>threading</exec_depend>
   <exec_depend>numpy</exec_depend>
   <exec_depend>time</exec_depend>
+  <exec_depend>math</exec_depend>
   <exec_depend>socket</exec_depend>
-  <exec_depend>threading</exec_depend>
+  <exec_depend>subprocess</exec_depend>
   <exec_depend>busio</exec_depend>
   <exec_depend>board</exec_depend>
   <exec_depend>adafruit_pca9685</exec_depend>

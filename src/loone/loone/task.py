@@ -11,23 +11,30 @@ class Task(Node):
 
     def publish(self):
         msg = Float32MultiArray()
-        msg.data = [self.action, self.target_heading, self.target_speed]
+        msg.data = [self.command, self.target_heading, self.target_speed, self.dir]
         self.publisher_.publish(msg)
         #self.get_logger().info(f"Task: {msg.data}")
     
     def run_task(self):
-        self.action = 1.0
+        self.command = 1.0
         self.target_heading = 0.0
         self.target_speed = 1.0
+        self.dir = None
         
         self.publish()
 
 def main(args = None):
     rclpy.init(args = args)
     task = Task()
-    rclpy.spin(task)
-    task.destroy_node()
-    rclpy.shutdown()
+    # Add a try-except block to handle KeyboardInterrupt gracefully
+    try:
+        rclpy.spin(task)
+    except KeyboardInterrupt:
+        task.get_logger().info("Task node interrupted by user.")
+    finally:
+        task.shutdown()
+        task.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

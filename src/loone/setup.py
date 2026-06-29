@@ -16,10 +16,10 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='iamsoon',
-    maintainer_email='iamsoon@todo.todo',
-    description='TODO: Package description',
-    license='Apache-2.0',
+    maintainer='humberasv',
+    maintainer_email='mechatronicsclub@humber.ca',
+    description='Loon-E operation',
+    license='MIT',
     extras_require={
         'test': [
             'pytest',
@@ -29,6 +29,8 @@ setup(
         'console_scripts': [
             'phone = loone.phone:main',
             'task = loone.task:main',
+            'mapping = loone.mapping:main',
+            'path_planning = loone.path_planning:main',
             'motor = loone.motor:main',
             'led = loone.led:main',
         ],

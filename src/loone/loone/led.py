@@ -6,8 +6,6 @@ import threading
 
 class LED(Node):
     def __init__(self):
-        self.initialize()
-
         self.receiver = threading.Thread(target = self.light, daemon = True)
         self.receiver.start()
 
@@ -15,11 +13,13 @@ class LED(Node):
         red_pin = 15
         green_pin = 32
         blue_pin = 33
+        data_pin = 40
 
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(red_pin, GPIO.OUT)
         GPIO.setup(green_pin, GPIO.OUT)
         GPIO.setup(blue_pin, GPIO.OUT)
+        GPIO.setup(data_pin, GPIO.IN)
 
         self.red = GPIO.PWM(red_pin, 50)
         self.green = GPIO.PWM(green_pin, 50)
@@ -41,6 +41,7 @@ class LED(Node):
         return dc
 
     def light(self):
+        self.initialize()
         while rclpy.ok():
             self.red.ChangeDutyCycle(1)
             self.green.ChangeDutyCycle(0)
@@ -59,9 +60,14 @@ class LED(Node):
 def main(args = None):
     rclpy.init(args = args)
     led = LED()
-    rclpy.spin(led)
-    led.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(led)
+    except KeyboardInterrupt:
+        led.get_logger().info("LED node interrupted by user.")
+    finally:
+        led.shutdown()
+        led.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
