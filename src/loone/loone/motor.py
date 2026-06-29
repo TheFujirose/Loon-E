@@ -27,10 +27,10 @@ class Motor(Node):
 
     def __init__(self):
         """Initialize the Motor node, configure PCA9685, and set up servo PWM channels."""
-        super().__init__('Motor_Sub')
+        super().__init__('Motor_PubSub')
         self.phone_sub = self.create_subscription(Float32MultiArray, 'phone', self.phone_callback, 10)
-        self.publisher_ = self.create_publisher(Float32MultiArray, 'motor', 10)
         self.task_sub = self.create_subscription(Float32MultiArray, 'task', self.task_callback, 10)
+        self.motor_pub = self.create_publisher(Float32MultiArray, 'motor', 10)
 
         freq = 50
         self._init_pca(freq)
@@ -115,7 +115,14 @@ class Motor(Node):
                 f"hardware limits [{self.PULSE_MIN_LIMIT}, {self.PULSE_MAX_LIMIT}] µs."
             )
             raise ValueError(f"Pulse range out of hardware limits for {channel_name}")
-
+            
+    def publish(self):
+        # Publish the current motor state
+        msg = Float32MultiArray()
+        msg.data = [self.prop_l.fraction, self.prop_r.fraction, self.rudder.fraction]
+        self.motor_pub.publish(msg)
+        #self.get_logger().info(f"Motor: {msg.data}")
+        
     def _init_servos(self):
         """Set up servo PWM channels on the PCA9685 with validated pulse ranges.
 
@@ -251,11 +258,10 @@ class Motor(Node):
             self.rudder.fraction = 1    # 35° left
         else:
             self.rudder.fraction = 0.55  # centred
-
-        # Publish the current motor state as a Float32MultiArray
-        self.publisher_.publish(Float32MultiArray(data=[self.prop_l.fraction, self.prop_r.fraction, self.rudder.fraction]))
+            
         self.last_error = current_error
         self.last_time = current_time
+        self.publish()
 
     def check_data(self):
         """Return True if all required sensor and target data are available and valid."""
@@ -289,14 +295,6 @@ class Motor(Node):
         self.target_speed = data[2]
         if self.check_data():
             self.drive()
-
-    def motor_callback(self, msg):
-        """Publish current motor state as a Float32MultiArray.
-
-        Args:
-            msg: Float32MultiArray containing motor state data.
-        """
-        self.publisher_.publish(msg)
 
     def shutdown(self):
         """De-initialize the PCA9685 and release the I2C bus on node shutdown."""
