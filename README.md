@@ -1,4 +1,6 @@
 # Loon-E
+[![Loone Tests](https://github.com/HumberASV/Loon-E/actions/workflows/tests.yml/badge.svg)](https://github.com/HumberASV/Loon-E/actions/workflows/tests.yml)
+
 [Humber ASV](https://humberasv.ca/)'s Autonomous Surface Vehicle (ASV) project: Loon-E.
 The boat's public colcon package, containing the code for the boat's various systems, including control, mapping, planning, and communication.
 
