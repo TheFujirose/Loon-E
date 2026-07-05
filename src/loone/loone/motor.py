@@ -25,7 +25,7 @@ class Motor(Node):
     PULSE_MIN_LIMIT = 500
     PULSE_MAX_LIMIT = 2500
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the Motor node, configure PCA9685, and set up servo PWM channels."""
         super().__init__('Motor_PubSub')
         self.phone_sub = self.create_subscription(Float32MultiArray, 'phone', self.phone_callback, 10)
@@ -70,7 +70,7 @@ class Motor(Node):
         self.target_heading = None
         self.target_speed = None
 
-    def _init_pca(self, freq):
+    def _init_pca(self, freq) -> None:
         """Initialize the PCA9685 PWM driver over I2C.
 
         Args:
@@ -109,7 +109,7 @@ class Motor(Node):
         self.pulse = 1 / freq * 10**6
         self.get_logger().info(f"PCA9685 initialized at {freq} Hz.")
 
-    def _validate_pulse_range(self, min_pulse, max_pulse, channel_name):
+    def _validate_pulse_range(self, min_pulse, max_pulse, channel_name) -> None:
         """Validate that PWM pulse widths are ordered and within hardware limits.
 
         Args:
@@ -135,14 +135,14 @@ class Motor(Node):
             )
             raise ValueError(f"Pulse range out of hardware limits for {channel_name}")
             
-    def publish(self):
+    def publish(self) -> None:
         # Publish the current motor state
         msg = Float32MultiArray()
         msg.data = [self.prop_l.fraction, self.prop_r.fraction, self.rudder.fraction]
         self.motor_pub.publish(msg)
         #self.get_logger().info(f"Motor: {msg.data}")
         
-    def _init_servos(self, prop_min, prop_max, rudder_min, rudder_max):
+    def _init_servos(self, prop_min, prop_max, rudder_min, rudder_max) -> None:
         """Set up servo PWM channels on the PCA9685 with validated pulse ranges.
 
         Raises:
@@ -165,7 +165,7 @@ class Motor(Node):
 
         self.get_logger().info("Servo PWM channels initialized.")
 
-    def convert(self, angle):
+    def convert(self, angle) -> float:
         """Convert a heading angle from [0, 360] to [-180, 180].
         
         Args:
@@ -179,7 +179,7 @@ class Motor(Node):
 
         return angle
 
-    def remap(self, error, outMin=1540, outMax=1880):
+    def remap(self, error, outMin=1540, outMax=1880) -> float:
         """Map a heading error to a proportional pulse width in microseconds.
 
         Larger errors produce lower pulse widths (stronger correction).
@@ -195,7 +195,7 @@ class Motor(Node):
         output = outMax + (abs(error) / self.max * (outMin - outMax))
         return output
 
-    def get_fraction(self, pulse, min_pulse=1120, max_pulse=1880):
+    def get_fraction(self, pulse, min_pulse=1120, max_pulse=1880) -> float:
         """Convert a pulse width in microseconds to a normalized duty cycle fraction.
 
         Args:
@@ -227,7 +227,7 @@ class Motor(Node):
 
         return fraction
 
-    def drive(self):
+    def drive(self) -> None:
         """Run one PID control cycle and update propeller and rudder PWM outputs."""
         current_time = time.time()
         current_error = self.target_heading - self.current_heading
@@ -279,13 +279,13 @@ class Motor(Node):
         self.last_time = current_time
         self.publish()
 
-    def reverse(self):
+    def reverse(self) -> None:
         """Set PWM to move backwards"""
         self.prop_l.fraction = 0 #max backward
         self.prop_r.fraction = 0 #max backward
         self.rudder.fraction = self.center #0 degrees
     
-    def turn_in_place(self):
+    def turn_in_place(self) -> None:
         """Set PWM to turn in place"""
         if np.sign(self.dir) == 1: #turn left
             self.prop_l.fraction = self.get_fraction(1460) #min backward
@@ -297,13 +297,13 @@ class Motor(Node):
             self.prop_r.fraction = self.get_fraction(1460) #min backward 
             self.rudder.fraction = self.center #0 degrees
     
-    def stop(self):
+    def stop(self) -> None:
         """Set propeller and rudder PWM to center/no motion"""
         self.prop_l.fraction = 0.5 #no motion
         self.prop_r.fraction = 0.5 #no motion
         self.rudder.fraction = self.center #0 degrees
 
-    def check_data(self):
+    def check_data(self) -> None:
         """Executes action based on value of self.command"""
         match self.command:
             case -1: #reverse
@@ -324,7 +324,7 @@ class Motor(Node):
                 if (self.dir is not None):
                     self.turn_in_place()
 
-    def phone_callback(self, msg):
+    def phone_callback(self, msg) -> None:
         """Handle incoming phone telemetry and update current speed and heading.
 
         Args:
@@ -335,7 +335,7 @@ class Motor(Node):
         self.current_speed = data[2]
         self.current_heading = data[3]
 
-    def task_callback(self, msg):
+    def task_callback(self, msg) -> None:
         """Handle incoming task commands and drive motors if sensor data is ready.
 
         Args:
@@ -349,12 +349,12 @@ class Motor(Node):
         self.dir = data[3]
         self.check_data()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """De-initialize the PCA9685 and release the I2C bus on node shutdown."""
         self.pca.deinit()
 
 
-def main(args=None):
+def main(args=None) -> None:
     rclpy.init(args=args)
     motor = Motor()
     try:

@@ -1,0 +1,30 @@
+name: Loone Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-motor:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up ROS 2 Humble
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Install Python test dependencies
+        run: |
+          source /opt/ros/humble/setup.bash
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pytest numpy adafruit-circuitpython-motor adafruit-circuitpython-pca9685
+
+      - name: Run motor unit tests
+        run: |
+          source /opt/ros/humble/setup.bash
+          export PYTHONPATH="$PYTHONPATH:$GITHUB_WORKSPACE/src/loone:$GITHUB_WORKSPACE/src/loone/test/stubs"
+          pytest src/loone/test/test_motor.py -v
