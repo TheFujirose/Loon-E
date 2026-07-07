@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
+import numpy as np
 
 class Task(Node):
     """
@@ -38,7 +39,7 @@ class Task(Node):
         self.command = 1.0
         self.target_heading = 0.0
         self.target_speed = 1.0
-        self.dir = None
+        self.dir = np.nan
         
         self.publish()
 
@@ -54,7 +55,6 @@ def main(args = None) -> None:
     except KeyboardInterrupt:
         task.get_logger().info("Task node interrupted by user.")
     finally:
-        task.shutdown()
         task.destroy_node()
         rclpy.shutdown()
 

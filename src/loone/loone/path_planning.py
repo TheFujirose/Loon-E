@@ -264,7 +264,6 @@ def main(args = None):
     except KeyboardInterrupt:
         planning.get_logger().info("Planning node interrupted by user.")
     finally:
-        planning.shutdown()
         planning.destroy_node()
         rclpy.shutdown()
 

@@ -313,10 +313,10 @@ class Motor(Node):
                 self.stop()
 
             case 1: #drive
-                if (not np.isnan(self.current_heading)
-                    and not np.isnan(self.current_speed)
-                    and self.target_heading is not None
-                    and self.target_speed is not None):
+                if not (np.isnan(self.current_heading)
+                    or np.isnan(self.current_speed)
+                    or np.isnan(self.target_heading)
+                    or np.isnan(self.target_speed)):
                     
                     self.drive()
             
