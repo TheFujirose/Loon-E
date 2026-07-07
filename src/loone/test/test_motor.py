@@ -68,11 +68,20 @@ def motor_node():
     # Replace the servo module so Servo() objects are fakes we can inspect.
     servo_patcher = patch('loone.motor.servo')
 
-    rclpy_patcher.start()
+    rclpy_mock = rclpy_patcher.start()
     busio_patcher.start()
     board_patcher.start()
     pca_mock = pca_patcher.start()
     servo_mock = servo_patcher.start()
+
+    # Motor.__init__ blocks in a `while not ...is_set(): rclpy.spin_once(self, ...)`
+    # loop until phone/task data has been received. Since rclpy is mocked here,
+    # spin_once would otherwise never advance those events and the loop would
+    # hang forever. `self` is passed as spin_once's first argument, so use that
+    # to simulate data having arrived and let construction proceed.
+    rclpy_mock.spin_once.side_effect = lambda node, timeout_sec=None: (
+        node.phone_data_ready_event.set(), node.task_data_ready_event.set()
+    )
 
     # Servo(channel, min_pulse=..., max_pulse=...) is called once per channel
     # (prop_l, prop_r, rudder). A bare MagicMock call returns the same
