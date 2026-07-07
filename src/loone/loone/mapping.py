@@ -213,7 +213,6 @@ def main(args = None):
     except KeyboardInterrupt:
         mapping.get_logger().info("Mapping node interrupted by user.")
     finally:
-        mapping.shutdown()
         mapping.destroy_node()
         rclpy.shutdown()
 
