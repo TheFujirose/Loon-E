@@ -68,11 +68,20 @@ def motor_node():
     # Replace the servo module so Servo() objects are fakes we can inspect.
     servo_patcher = patch('loone.motor.servo')
 
-    rclpy_patcher.start()
+    rclpy_mock = rclpy_patcher.start()
     busio_patcher.start()
     board_patcher.start()
     pca_mock = pca_patcher.start()
     servo_mock = servo_patcher.start()
+
+    # Motor.__init__ blocks in a `while not ...is_set(): rclpy.spin_once(self, ...)`
+    # loop until phone/task data has been received. Since rclpy is mocked here,
+    # spin_once would otherwise never advance those events and the loop would
+    # hang forever. `self` is passed as spin_once's first argument, so use that
+    # to simulate data having arrived and let construction proceed.
+    rclpy_mock.spin_once.side_effect = lambda node, timeout_sec=None: (
+        node.phone_data_ready_event.set(), node.task_data_ready_event.set()
+    )
 
     # Servo(channel, min_pulse=..., max_pulse=...) is called once per channel
     # (prop_l, prop_r, rudder). A bare MagicMock call returns the same
@@ -253,14 +262,16 @@ class TestCheckData:
         motor_node.stop.assert_called_once()
 
     def test_command_drive_does_not_drive_when_heading_is_nan(self, motor_node):
+        # check_data() always forwards to drive() for command==1; the NaN/None
+        # guard now lives inside drive() itself, so assert on its effect
+        # (no publish) rather than mocking drive() out.
         motor_node.command = 1
         motor_node.current_heading = np.nan
         motor_node.current_speed = 1.0
         motor_node.target_heading = 90.0
         motor_node.target_speed = 1.0
-        motor_node.drive = MagicMock()
         motor_node.check_data()
-        motor_node.drive.assert_not_called()
+        motor_node.motor_pub.publish.assert_not_called()
 
     def test_command_drive_does_not_drive_when_speed_is_nan(self, motor_node):
         motor_node.command = 1
@@ -268,9 +279,8 @@ class TestCheckData:
         motor_node.current_speed = np.nan
         motor_node.target_heading = 90.0
         motor_node.target_speed = 1.0
-        motor_node.drive = MagicMock()
         motor_node.check_data()
-        motor_node.drive.assert_not_called()
+        motor_node.motor_pub.publish.assert_not_called()
 
     def test_command_drive_does_not_drive_when_target_heading_is_none(self, motor_node):
         motor_node.command = 1
@@ -278,9 +288,8 @@ class TestCheckData:
         motor_node.current_speed = 1.0
         motor_node.target_heading = None
         motor_node.target_speed = 1.0
-        motor_node.drive = MagicMock()
         motor_node.check_data()
-        motor_node.drive.assert_not_called()
+        motor_node.motor_pub.publish.assert_not_called()
 
     def test_command_drive_does_not_drive_when_target_speed_is_none(self, motor_node):
         motor_node.command = 1
@@ -288,9 +297,8 @@ class TestCheckData:
         motor_node.current_speed = 1.0
         motor_node.target_heading = 90.0
         motor_node.target_speed = None
-        motor_node.drive = MagicMock()
         motor_node.check_data()
-        motor_node.drive.assert_not_called()
+        motor_node.motor_pub.publish.assert_not_called()
 
     def test_command_drive_calls_drive_when_all_data_present(self, motor_node):
         motor_node.command = 1
@@ -349,11 +357,11 @@ class TestCallbacks:
         msg.data = [1.0, 45.0, 1.5, 0.0]
         motor_node.current_heading = np.nan  # data still invalid
 
-        # Swap drive() for a MagicMock so we can check it was NOT called
-        motor_node.drive = MagicMock()
+        # drive()'s own NaN guard should prevent a publish, since check_data()
+        # now always forwards to the real drive().
         motor_node.task_callback(msg)
 
-        motor_node.drive.assert_not_called()
+        motor_node.motor_pub.publish.assert_not_called()
 
     def test_task_callback_drives_when_data_valid(self, motor_node):
         motor_node.current_heading = 90.0
