@@ -239,6 +239,33 @@ class Motor(Node):
             fraction = max(0.0, min(1.0, fraction))
 
         return fraction
+    
+    def reverse(self) -> None:
+        """Set PWM to move backwards"""
+        self.prop_l.fraction = 0 #max backward
+        self.prop_r.fraction = 0 #max backward
+        self.rudder.fraction = self.center #0 degrees
+        self.publish()
+    
+    def stop(self) -> None:
+        """Set propeller and rudder PWM to center/no motion"""
+        self.prop_l.fraction = 0.5 #no motion
+        self.prop_r.fraction = 0.5 #no motion
+        self.rudder.fraction = self.center #0 degrees
+
+    def turn_in_place(self) -> None:
+        """Set PWM to turn in place"""
+        if np.sign(self.dir) == 1: #turn left
+            self.prop_l.fraction = self.get_fraction(1460) #min backward
+            self.prop_r.fraction = self.get_fraction(1540) #min forward 
+            self.rudder.fraction = self.center #0 degrees
+        
+        else: #turn right
+            self.prop_l.fraction = self.get_fraction(1540) #min forward
+            self.prop_r.fraction = self.get_fraction(1460) #min backward 
+            self.rudder.fraction = self.center #0 degrees
+        
+        self.publish()
 
     def drive(self) -> None:
         """Run one PID control cycle and update propeller and rudder PWM outputs."""
@@ -254,75 +281,56 @@ class Motor(Node):
         dt = current_time - self.last_time
         de = (current_error - self.last_error) / dt
 
-        self.i = self.i + self.ki * current_error
-        if self.i < -self.max:
-            self.i = -self.max
-        elif self.i > self.max:
-            self.i = self.max
+        if current_error <= 45:
+            self.i = self.i + self.ki * current_error
+            if self.i < -self.max:
+                self.i = -self.max
+            elif self.i > self.max:
+                self.i = self.max
 
-        output = self.kp * current_error + self.i * dt + self.kd * de
-        if output < -self.max:
-            output = -self.max
-        elif output > self.max:
-            output = self.max
+            output = self.kp * current_error + self.i * dt + self.kd * de
+            if output < -self.max:
+                output = -self.max
+            elif output > self.max:
+                output = self.max
 
-        # This remapping ensures that the output pulse width 
-        # is within the valid range for the propellers ?
-        remapped_output = self.remap(output)
+            # This remapping ensures that the output pulse width 
+            # is within the valid range for the propellers ?
+            remapped_output = self.remap(output)
 
-        if self.current_speed < self.target_speed:
-            self.factor += 0.05
-            if self.factor > 1:
-                self.factor = 1
-        elif self.current_speed > self.target_speed:
-            self.factor -= 0.05
-            if self.factor < 0.55:
-                self.factor = 0.55
+            if self.current_speed < self.target_speed:
+                self.factor += 0.05
+                if self.factor > 1:
+                    self.factor = 1
+            elif self.current_speed > self.target_speed:
+                self.factor -= 0.05
+                if self.factor < 0.55:
+                    self.factor = 0.55
 
-        if current_error > 0:  # turn right: reduce right propeller
-            self.prop_l.fraction = self.factor
-            self.prop_r.fraction = self.get_fraction(remapped_output) * self.factor
-            self.get_logger().info(f"Sending Right: {remapped_output}")
-        else:  # turn left: reduce left propeller
-            self.prop_l.fraction = self.get_fraction(remapped_output) * self.factor
-            self.prop_r.fraction = self.factor
-            self.get_logger().info(f"Sending Left: {remapped_output}")
+            if current_error > 0:  # turn right: reduce right propeller
+                self.prop_l.fraction = self.factor
+                self.prop_r.fraction = self.get_fraction(remapped_output) * self.factor
+                self.get_logger().info(f"Sending Right: {remapped_output}")
+            else:  # turn left: reduce left propeller
+                self.prop_l.fraction = self.get_fraction(remapped_output) * self.factor
+                self.prop_r.fraction = self.factor
+                self.get_logger().info(f"Sending Left: {remapped_output}")
 
-        if output < -self.max / 2:
-            self.rudder.fraction = 0.0    # 35° right
-        elif output > self.max / 2:
-            self.rudder.fraction = 1.0    # 35° left
-        else:
-            self.rudder.fraction = self.center  # centred
-            
-        self.last_error = current_error
-        self.last_time = current_time
-        self.publish()
-
-    def reverse(self) -> None:
-        """Set PWM to move backwards"""
-        self.prop_l.fraction = 0 #max backward
-        self.prop_r.fraction = 0 #max backward
-        self.rudder.fraction = self.center #0 degrees
-    
-    def turn_in_place(self) -> None:
-        """Set PWM to turn in place"""
-        if np.sign(self.dir) == 1: #turn left
-            self.prop_l.fraction = self.get_fraction(1460) #min backward
-            self.prop_r.fraction = self.get_fraction(1540) #min forward 
-            self.rudder.fraction = self.center #0 degrees
+            if output < -self.max / 2:
+                self.rudder.fraction = 0.0    # 35° right
+            elif output > self.max / 2:
+                self.rudder.fraction = 1.0    # 35° left
+            else:
+                self.rudder.fraction = self.center  # centred
+                
+            self.last_error = current_error
+            self.last_time = current_time
+            self.publish()
         
-        else: #turn right
-            self.prop_l.fraction = self.get_fraction(1540) #min forward
-            self.prop_r.fraction = self.get_fraction(1460) #min backward 
-            self.rudder.fraction = self.center #0 degrees
+        else:
+            self.dir = current_error
+            self.turn_in_place()
     
-    def stop(self) -> None:
-        """Set propeller and rudder PWM to center/no motion"""
-        self.prop_l.fraction = 0.5 #no motion
-        self.prop_r.fraction = 0.5 #no motion
-        self.rudder.fraction = self.center #0 degrees
-
     def check_data(self) -> None:
         """Executes action based on value of self.command"""
         match self.command:
@@ -336,7 +344,7 @@ class Motor(Node):
                 self.drive()
             
             case 2: #turn
-                if (self.dir is not None):
+                if not np.isnan(self.dir):
                     self.turn_in_place()
 
     def phone_callback(self, msg) -> None:  
@@ -372,6 +380,7 @@ class Motor(Node):
 
 
 def main(args=None) -> None:
+    """ Main function to initialize the ROS2 node and start spinning. """
     rclpy.init(args=args)
     motor = Motor()
     try:
