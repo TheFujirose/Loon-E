@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, Int8MultiArray
 from geometry_msgs.msg import Polygon, Point32
+import threading
 import numpy as np
 import time
 import math
@@ -33,6 +34,15 @@ class Task(Node):
     def __init__(self):
         """ Initialize the Task node and set up the publisher and timer. """
         super().__init__('Task_PubSub')
+
+        #Events
+        self.object_data_ready_event = threading.Event()
+        self.location_data_ready_event = threading.Event()
+        self.phone_data_ready_event = threading.Event()
+        self.position_data_ready_event = threading.Event()
+        self.path_data_ready_event = threading.Event()
+
+        #Publishers and Subscribers
         self.path_pub = self.create_publisher(Polygon, 'task_path', 10)
         self.motor_pub = self.create_publisher(Float32MultiArray, 'task_motor', 10)
         self.objects_sub = self.create_subscription(Int8MultiArray, 'objects', self.object_callback(), 10)
@@ -54,17 +64,23 @@ class Task(Node):
         self.task = self.get_parameter('task').integer_array_value
         latitude = self.get_parameter('latitude').double_array_value
         longitude = self.get_parameter('longitude').double_array_value
+        self.get_path(latitude, longitude) # Merge lists
 
+        #Other internal variables
         self.i = 0 # Current target GPS coordinate
         self.stage = 0 # Current stage in task
-        self.get_path(latitude, longitude)
 
-        self.position = [np.nan, np.nan] # Current GPS position
+        #Other variables from topics
+        self.position = np.array([np.nan, np.nan]) # Current GPS position
         self.heading = np.nan # Current Heading
-        self.objects = [np.nan] # Current objects in view
-        self.locations = [np.nan] # Current position of objects
-        self.global_position = [np.nan, np.nan] # Current position in global map
-        self.waypoints = [np.nan] # Path to destination
+        self.objects = [] # Current objects in view
+        self.locations = np.array([]) # Current position of objects
+        self.global_position = np.array([np.nan, np.nan]) # Current position in global map
+        self.waypoints = [] # Path to destination
+
+        #Thread
+        self.receiver = threading.Thread(target = self.run_task, daemon = True)
+        self.receiver.start()
 
     def get_path(self, latitude, longitude):
         """ Setup function which converts list of latitude and list of longitude into list of [latitude, longitude].
@@ -123,7 +139,7 @@ class Task(Node):
         Args:
             target_objects: Object to identify
 
-        Returns True if object found and False if not found.
+        Returns True if object found and False otherwise.
         """
         found = True
         for object in target_objects:
@@ -140,7 +156,7 @@ class Task(Node):
             target_objects: Object to identify
             found: If the object should be in the image (True) or not (False).
 
-        Returns True if condition met and False if not.
+        Returns True if condition met and False otherwise.
         """
         change_stage = False
         if self.object_found(target_objects) == found: #If change condition met
@@ -154,7 +170,7 @@ class Task(Node):
         Args:
             i: Desired index for GPS point in list provided by self.path.
 
-        Returns True if Loon-E at point and False if not.
+        Returns True if Loon-E at point and False otherwise.
         """
         arrived = False
         if self.position[0] == self.latitude[i] and self.position[1] == self.longitude[i]:
@@ -169,7 +185,7 @@ class Task(Node):
         Args:
             target_heading: Desired heading.
         
-        Returns True if Loon-E within 45 degrees of target angle and False if not.
+        Returns True if Loon-E within 45 degrees of target angle and False otherwise.
         """
         good_heading = True
         d_heading = self.heading - target_heading
@@ -186,8 +202,18 @@ class Task(Node):
             
         return good_heading
     
-    def get_map_cell(self, start, end): #Get heading from two coordinates
-        #Possible edit: Use haversine formula instead
+    def get_map_cell(self, start, end):
+        """Get heading from two coordinates.
+
+        Args:
+            start: Current GPS coordinate.
+            end: Target GPS coordinate.
+        
+        Returns:
+            target_position: Target coordinate in global map
+            heading: Heading of the coordinate relative to North
+        Possible edit: Use haversine formula instead
+        """
         lat = math.radians((start[1] + end[1]) / 2)
         y = round((start[0] - end[0]) * 111000 / self.res)
         x = round((start[1] - end[1]) * 111000 * math.cos(lat) / self.res)
@@ -196,8 +222,18 @@ class Task(Node):
         
         return target_position, heading
     
-    def get_coordinate(self, current_position, waypoints): #Get position and heading from coordinate and relative position in map
-        #Possible edit: Use haversine formula instead
+    def get_coordinate(self, current_position, waypoints):
+        """Get position and heading from coordinate and relative position in map.
+        Args:
+            current_position: Current GPS coordinate
+            waypoints: Global map points representing path to destination
+        
+        Returns:
+            target_position: GPS coordinate of target position
+            heading: Heading of coordinate relative to North
+        
+        Possible edit: Use haversine formula instead
+        """
         lat = current_position[0]
         long = current_position[1]
         x = (waypoints[1][0] - waypoints[0][0]) * self.res
@@ -214,12 +250,19 @@ class Task(Node):
         return target_position, heading
 
     def drive(self):
+        """Self-driving control loop"""
+        #Calculate target position in global map
         target_position = self.get_map_cell(self.position, self.path[self.i])[0]
         data = [self.global_position, target_position]
         self.publish_path(data)
         
-        #Wait for waypoint data to be received
-        if self.waypoints is not None:
+        #Wait for path planning to be completed
+        while not self.path_data_ready_event.is_set():
+            rclpy.spin_once(self, timeout_sec = 0.1)
+        self.path_data_ready_event.clear()
+
+        #Send command to Motor Node
+        if self.waypoints != []:
             target_heading = self.get_coordinate(self.position, self.waypoints)[1]
             data = [1.0, target_heading, 2.0, np.nan]
             self.publish_motor(data)
@@ -230,11 +273,13 @@ class Task(Node):
         self.publish_motor(data)
     
     #General Code - Tasks
-    def task_0(self): #For PID testing
-        data = [1.0, 0.0, self.speed, 1.0, np.nan]
+    def task_0(self):
+        """For PID testing"""
+        data = [1.0, 0.0, self.speed, np.nan]
         self.publish_motor(data)
     
-    def task_1(self): #Maneuvering and Path Finding
+    def task_1(self):
+        """Maneuvering and Path Finding"""
         match self.stage:
             case 0: #Turn to face nearest waypoint
                 dist = 0
@@ -274,7 +319,8 @@ class Task(Node):
                     if self.i == len(self.path): #Final waypoint
                         self.shutdown()
 
-    def task_2(self): #Collision Avoidance
+    def task_2(self):
+        """Collision Avoidance"""
         margin = 0.4
         match self.stage:
             case 0: #Go to destination, checking for Otter
@@ -323,21 +369,38 @@ class Task(Node):
                 if self.arrived(self.i):
                     self.shutdown()
 
-    def task_3(self): #Docking
-        
+    def task_3(self):
+        """Docking"""
+
         return
     
-    def task_4(self): #Surprise Task
+    def task_4(self):
+        """Surprise Task"""
 
         return
 
     def run_task(self):
-        match self.task:
-            case 0: self.task_0()
-            case 1: self.task_1()
-            case 2: self.task_2()
-            case 3: self.task_3()
-            case 4: self.task_4()
+        """Wait to receive data, execute task when data received, and clear event status when task executed"""
+        while True:
+            #Spin until data is received
+            while not (self.object_data_ready_event.is_set()
+                       and self.location_data_ready_event.is_set()
+                       and self.phone_data_ready_event.is_set()
+                       and self.position_data_ready_event.is_set()):
+                rclpy.spin_once(self, timeout_sec = 0.1)
+
+            match self.task:
+                case 0: self.task_0()
+                case 1: self.task_1()
+                case 2: self.task_2()
+                case 3: self.task_3()
+                case 4: self.task_4()
+            
+            #Clear to wait until next set of data is received - Is this necessary?
+            self.object_data_ready_event.clear()
+            self.location_data_ready_event.clear()
+            self.phone_data_ready_event.clear()
+            self.position_data_ready_event.clear()
     
     #ROS - Subscribe
     def object_callback(self, msg: Int8MultiArray) -> None:
@@ -349,6 +412,7 @@ class Task(Node):
         """
         self.get_logger().info(f"Objects: {msg.data}")
         self.objects = msg.data
+        self.object_data_ready_event.set()
     
     def location_callback(self, msg: Polygon) -> None:
         """Callback function for the locations subscription. Updates the list of detected objects' locations.
@@ -358,6 +422,7 @@ class Task(Node):
         """
         self.get_logger().info(f"Locations: {msg.data}")
         self.locations = [[p.y, p.x] for p in msg.points]
+        self.location_data_ready_event.set()
 
     def phone_callback(self, msg: Float32MultiArray) -> None:
         """Handle incoming phone telemetry and update current position, speed, and heading.
@@ -395,6 +460,7 @@ class Task(Node):
         """
         self.get_logger().info(f"Path: {msg.data}")
         self.waypoints = [[p.y, p.x] for p in msg.points]
+        self.path_data_ready_event.set()
 
 def main(args = None):
     """ Main function to initialize the ROS2 node and start spinning. """
