@@ -33,7 +33,7 @@ class Path(Node):
         self.radius = self.get_parameter('radius').value #min distance from obstacles, in cells
 
         #Other variables from topics
-        self.map = []
+        self.map = np.array([])
         self.x_start = np.nan
         self.y_start = np.nan
         self.x_end = np.nan
@@ -73,8 +73,10 @@ class Path(Node):
     def find_obstacle(self, point: tuple) -> bool:
         """ 
         Check if there is an obstacle within a certain radius of a given point. 
+        
         Args:
             point (tuple): The (y, x) coordinates of the point to check.
+        
         Returns:
             bool: True if there is an obstacle within the radius, False otherwise.
         """
@@ -90,6 +92,34 @@ class Path(Node):
                     break
         
         return output
+
+    def get_obstacle(self, point: tuple) -> tuple:
+        """Get the average location of all obstacles within the radius of a given point.
+        
+        Args:
+            point: The (y, x) coordinates of the point to check.
+        
+        Returns:
+            The (y, x) average location of all obstacles within the radius.
+        """
+        obstacles = []
+        y = point[0]
+        x = point[1]
+        
+        for i in range (y - self.radius, y + self.radius + 1):
+            for j in range (x - self.radius, x + self.radius + 1):
+                position = (i, j)
+                if self.point_in_map(position) and (self.map[i][j] != 0): #If obstacle in range
+                    obstacles.append((y - i, x - j))
+        
+        obstacles = zip(obstacles)
+        dy = sum(obstacles)[0] / len(obstacles)[0]
+        dx = sum(obstacles)[1] / len(obstacles)[1]
+        average = (y + np.sign(dy), x + np.sign(dx))
+        if not self.point_in_map(average):
+            average = (y - 2 * dy, x - 2 * dx) #Point "jumps over" obstacle
+
+        return average
 
     def pathfind(self, start: tuple, expanded: list) -> list:
         """
@@ -220,8 +250,11 @@ class Path(Node):
         """
         Generate the path from start to end, not avoiding obstacles.
         """
+        #Defensive Checks
         while self.find_obstacle((self.y_end, self.x_end)): #Ensure that end point is not near obstacle
-            self.y_end = self.y_end - 1 #UPDATE
+            y, x = self.get_obstacles(self.y_end, self.x_end)
+            self.y_end = self.y_end + y #Move point in direction opposite average of nearby obstacles
+            self.x_end = self.x_end + x
         
         dx = self.x_end - self.x_start #change in x
         dy = self.y_end - self.y_start #change in y
@@ -262,7 +295,7 @@ class Path(Node):
         self.x_start = msg.points[0].x
         self.y_end = msg.points[1].y
         self.x_end = msg.points[1].x
-        if self.map != []:
+        if self.map != np.array([]):
             self.get_path()
     
 def main(args = None):
