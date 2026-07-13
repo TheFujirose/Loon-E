@@ -39,7 +39,7 @@ class Task(Node):
         self.command = 1.0
         self.target_heading = 0.0
         self.target_speed = 1.0
-        self.dir = np.nan
+        self.dir = -999.0
         
         self.publish()
 

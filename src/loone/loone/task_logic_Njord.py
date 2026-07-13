@@ -71,12 +71,12 @@ class Task(Node):
         self.stage = 0 # Current stage in task
 
         #Other variables from topics
-        self.position = np.array([np.nan, np.nan]) # Current GPS position
-        self.heading = np.nan # Current Heading
-        self.objects = [] # Current objects in view
-        self.locations = np.array([]) # Current position of objects
-        self.global_position = np.array([np.nan, np.nan]) # Current position in global map
-        self.waypoints = [] # Path to destination
+        self.position = np.array([[-999, -999]]) # Current GPS position
+        self.heading = -999 # Current Heading
+        self.objects = [-999] # Current objects in view
+        self.locations = [[-999, -999]] # Current position of objects
+        self.global_position = np.array([-999, -999]) # Current position in global map
+        self.waypoints = np.array([[-999, -999]]) # Path to destination
 
         #Thread
         self.receiver = threading.Thread(target = self.run_task, daemon = True)
@@ -196,7 +196,7 @@ class Task(Node):
             d_heading += 360
 
         if abs(d_heading) > 45:
-            data = [2, np.nan, np.nan, np.sign(d_heading)]
+            data = [2.0, -999.0, -999.0, np.sign(d_heading)]
             self.publish_motor(data)
             good_heading = False
             
@@ -264,7 +264,7 @@ class Task(Node):
         #Send command to Motor Node
         if self.waypoints != []:
             target_heading = self.get_coordinate(self.position, self.waypoints)[1]
-            data = [1.0, target_heading, 2.0, np.nan]
+            data = [1.0, target_heading, 2.0, -999.0]
             self.publish_motor(data)
 
     def shutdown(self):
@@ -357,7 +357,7 @@ class Task(Node):
                     self.stage = 20
 
             case 12: #If right of boat, wait until Otter passes
-                data = [0.0, np.nan, np.nan, np.nan]
+                data = [0.0, -999.0, -999.0, -999.0]
                 self.publish_motor(data)
                 
                 if self.check_change(OTTER, False):

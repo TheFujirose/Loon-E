@@ -74,10 +74,10 @@ class Motor(Node):
         self.last_time = time.time()
 
         #Other variables from topics
-        self.current_speed = np.nan
-        self.current_heading = np.nan
-        self.target_heading = np.nan
-        self.target_speed = np.nan
+        self.current_speed = -999
+        self.current_heading = -999
+        self.target_heading = -999
+        self.target_speed = -999
 
         # Spin until data is received
         self.get_logger().info('waiting for phone and task data...')
@@ -276,8 +276,8 @@ class Motor(Node):
         current_time = time.time()
         
         #defensive check to ensure we have valid target and current heading/speed values
-        if (np.isnan(self.current_heading) or np.isnan(self.current_speed)
-                or self.target_heading is None or self.target_speed is None):
+        if (self.current_heading == -999 or self.current_speed == -999
+                or self.target_heading == -999 or self.target_speed == -999):
             self.get_logger().warning("Sensor/target data not ready; skipping drive cycle.")
             return
         
@@ -332,7 +332,7 @@ class Motor(Node):
             self.publish_motor()
         
         else:
-            self.dir = current_error
+            self.dir = np.sign(current_error)
             self.turn_in_place()
     
     def check_data(self) -> None:
@@ -348,7 +348,7 @@ class Motor(Node):
                 self.drive()
             
             case 2: #turn
-                if not np.isnan(self.dir):
+                if self.dir != -999.0:
                     self.turn_in_place()
 
     def phone_callback(self, msg) -> None:  

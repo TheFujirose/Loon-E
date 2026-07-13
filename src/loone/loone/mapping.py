@@ -3,6 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray, Int8MultiArray
 from geometry_msgs.msg import Polygon
 from nav_msgs.msg import OccupancyGrid
+import threading
 import numpy as np
 import math
 
@@ -16,6 +17,9 @@ class Mapping(Node):
         """ Initialize the Mapping node and set up publishers and subscribers. """
         super().__init__('Map_PubSub')
 
+        #Events
+        self.phone_data_ready_event = threading.Event()
+        
         #Publishers and Subscribers
         self.global_pub = self.create_publisher(OccupancyGrid, 'global', 10)
         self.current_position_pub = self.create_publisher(Float32MultiArray, 'position', 10)
@@ -29,7 +33,7 @@ class Mapping(Node):
         self.declare_parameter('global_w', 50)
         self.declare_parameter('global_l', 50)
         self.declare_parameter('res', 0.5)
-        self.declare_parameter('start_position', 4)
+        self.declare_parameter('start_position', 0)
 
         # Retrieve parameters
         self.local_w = self.get_parameter('local_w').value
@@ -44,7 +48,7 @@ class Mapping(Node):
         self.local_cols = self.get_cell(self.local_l)
         self.global_rows = self.get_cell(self.global_w)
         self.global_cols = self.get_cell(self.global_l)
-        self.local_map = np.zeros(0)
+        self.local_map = np.zeros((self.local_rows, self.local_cols), dtype = np.int8)
         self.global_map = np.zeros((self.global_rows, self.global_cols), dtype = np.int8)
 
         match start_position:
@@ -68,11 +72,17 @@ class Mapping(Node):
                 self.global_position = [round(self.global_rows*0.25), round(self.global_cols*0.25)]
 
         #Other variables from topics
-        self.objects = None
-        self.locations = None
+        self.objects = [-999]
+        self.locations = [[-999, -999]]
         self.current_position = self.global_position
-        self.previous_position = [None, None]
-        self.heading = None
+        self.previous_position = [-999, -999]
+        self.heading = -999
+
+        # Spin until data is received
+        self.get_logger().info('waiting for phone data...')
+        while not self.phone_data_ready_event.is_set():
+            rclpy.spin_once(self, timeout_sec = 0.1)
+        self.get_logger().info('phone data received, starting mapping node.')
 
     #ROS - Publish
     def publish_map(self) -> None:
@@ -173,7 +183,7 @@ class Mapping(Node):
                 for j in range(objW):
                     self.map[objStartY + j, objStartX + i] = 1
         
-        if self.current_position is not None and self.heading is not None:
+        if (self.current_position != -999) and (self.heading != -999):
             self.get_global_map()
     
     #ROS - Subscribe
@@ -214,6 +224,7 @@ class Mapping(Node):
             self.previous_position = self.current_position
             self.current_position = [data[0], data[1]]
         self.heading = data[3]
+        self.phone_data_ready_event.set() # Unblocks the init sequence
     
 def main(args = None):
     """ Main function to initialize the ROS2 node and start spinning. """

@@ -41,10 +41,10 @@ class Phone(Node):
         self.route_adb()
 
         #Other internal variables
-        self.heading = np.nan
-        self.speed = np.nan
-        self.latitude = np.nan
-        self.longitude = np.nan
+        self.heading = -999
+        self.speed = -999
+        self.latitude = -999
+        self.longitude = -999
         
         #Thread
         self.receiver = threading.Thread(target = self.get_odometry, daemon = True)
