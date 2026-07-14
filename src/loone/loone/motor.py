@@ -275,10 +275,12 @@ class Motor(Node):
         """Run one PID control cycle and update propeller and rudder PWM outputs."""
         current_time = time.time()
         
-        #defensive check to ensure we have valid target and current heading/speed values
-        if (self.current_heading == -999 or self.current_speed == -999
-                or self.target_heading == -999 or self.target_speed == -999):
-            self.get_logger().warning("Sensor/target data not ready; skipping drive cycle.")
+        #defensive check to ensure we have valid target and current heading/speed values, not being -999, np.nan, or None
+        if any(value in [-999, None] or np.isnan(value) for value in [
+            self.current_heading, self.target_heading, self.current_speed, self.target_speed]):
+            self.get_logger().warning(
+                "Invalid heading/speed values detected. Skipping PID cycle."
+            )
             return
         
         current_error = self.target_heading - self.current_heading
