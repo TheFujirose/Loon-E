@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'urdf'), glob('urdf/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -33,6 +34,9 @@ setup(
             'mapping = loone.mapping:main',
             'path_planning = loone.path_planning:main',
             'motor = loone.motor:main',
+            # nav2 + ros2_control chain (see bringup.launch.py)
+            'thrust_mixer = loone.thrust_mixer:main',
+            'pca9685_driver = loone.pca9685_driver:main',
         ],
     },
 )
