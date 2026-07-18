@@ -37,6 +37,9 @@ setup(
             # nav2 + ros2_control chain (see bringup.launch.py)
             'thrust_mixer = loone.thrust_mixer:main',
             'pca9685_driver = loone.pca9685_driver:main',
+            # Simulation only: stands in for pca9685_driver's open-loop state echo
+            # when the real driver is not running (see sim_state_echo.py).
+            'sim_state_echo = loone.sim_state_echo:main',
         ],
     },
 )

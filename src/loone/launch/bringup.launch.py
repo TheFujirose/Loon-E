@@ -26,6 +26,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
@@ -40,6 +41,7 @@ def generate_launch_description():
     camera_model = LaunchConfiguration('camera_model')
     zed_node_name = LaunchConfiguration('zed_node_name')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    sim = LaunchConfiguration('sim')
 
     # Expand the xacro once and share the result with rsp + controller_manager.
     xacro_path = os.path.join(loone_share, 'urdf', 'loone_asv.urdf.xacro')
@@ -122,12 +124,28 @@ def generate_launch_description():
     )
 
     # 7. Hardware driver (fractions -> PCA9685). Only node touching I2C.
+    #    Excluded in sim: it imports board/busio at module scope, so it cannot even
+    #    start on a machine without an I2C bus.
     pca9685_driver = Node(
         package='loone',
         executable='pca9685_driver',
         name='pca9685_driver',
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
+        condition=UnlessCondition(sim),
+    )
+
+    # 7b. Simulation stand-in for the driver's open-loop state echo. Isaac Sim
+    #     consumes /asv/joint_commands (see isaac_sim/.../ros2_bridge.py), but
+    #     nothing would publish /asv/joint_states back to topic_based_ros2_control
+    #     without this -- the state interfaces would sit at NaN.
+    sim_state_echo = Node(
+        package='loone',
+        executable='sim_state_echo',
+        name='sim_state_echo',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        condition=IfCondition(sim),
     )
 
     # 8. nav2 (produces /cmd_vel). No AMCL/map_server -- SLAM Toolbox owns those.
@@ -150,6 +168,10 @@ def generate_launch_description():
                               description='ZED wrapper node name inside the camera namespace.'),
         DeclareLaunchArgument('use_sim_time', default_value='false',
                               description='Use /clock simulated time. Keep false on the real boat.'),
+        DeclareLaunchArgument('sim', default_value='false',
+                              description='Simulation mode: swap pca9685_driver for sim_state_echo '
+                                          '(Isaac Sim drives the actuators). Usually set together '
+                                          'with use_sim_time:=true.'),
         slam_launch,
         robot_state_publisher,
         static_tf_cam_to_base,
@@ -158,5 +180,6 @@ def generate_launch_description():
         asv_forward_controller_spawner,
         thrust_mixer,
         pca9685_driver,
+        sim_state_echo,
         nav2_launch,
     ])
