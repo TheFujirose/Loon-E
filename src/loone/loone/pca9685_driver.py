@@ -25,6 +25,7 @@ the fractions arrive in JointState.position. (If you switch the URDF interface t
 
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import JointState
 import busio
 import board
@@ -89,14 +90,18 @@ class Pca9685Driver(Node):
             'rudder_joint': self.rudder_center,
         }
 
-        # Start every channel at its neutral so the boat does not lurch on boot.
-        self._apply(dict(self.joint_neutral))
-
         # ---- ROS wiring ----
         # Command topic + state topic names MUST match the TopicBasedSystem params in the URDF.
+        # Set up before the initial neutral apply below, since _apply publishes state.
+        # QoS must match TopicBasedSystem's publisher (rclcpp::SensorDataQoS, best-effort) --
+        # a reliable subscriber is incompatible with a best-effort publisher and silently never
+        # receives anything (this is why the boat never moved: joint_commands was DOA).
         self.cmd_sub = self.create_subscription(
-            JointState, '/asv/joint_commands', self.command_callback, 10)
+            JointState, '/asv/joint_commands', self.command_callback, qos_profile_sensor_data)
         self.state_pub = self.create_publisher(JointState, '/asv/joint_states', 10)
+
+        # Start every channel at its neutral so the boat does not lurch on boot.
+        self._apply(dict(self.joint_neutral))
 
         self.last_cmd_time = self.get_clock().now()
         # Watchdog: periodically check for stale commands and re-publish state.
