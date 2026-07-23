@@ -73,7 +73,7 @@ def generate_launch_description():
         parameters=[
             default_depth_to_laserscan_params_file,
             {
-                'output_frame': [camera_name, '_left_camera_frame'],
+                'output_frame': [camera_name, '_camera_link'],
                 'use_sim_time': use_sim_time,
             }
         ],
