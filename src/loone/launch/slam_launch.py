@@ -20,6 +20,22 @@ default_depth_to_laserscan_params_file = os.path.join(
     'depth_to_laserscan.yaml'
 )
 
+default_custom_object_detection_config_path = os.path.join(
+    get_package_share_directory('loone'),
+    'config',
+    'model.yaml'
+)
+
+# custom_onnx_file in model.yaml is a relative path; override it here with the
+# absolute path of the ONNX file as installed into the loone package share
+# directory, since the ZED SDK opens the path directly without resolving it
+# against the package share directory.
+default_model_onnx_path = os.path.join(
+    get_package_share_directory('loone'),
+    'model',
+    'loone.onnx'
+)
+
 
 def generate_launch_description():
     camera_name = LaunchConfiguration('camera_name')
@@ -42,6 +58,8 @@ def generate_launch_description():
             'node_name': zed_node_name,
             'publish_map_tf': 'false',  # SLAM Toolbox publishes map -> odom instead
             'use_sim_time': use_sim_time,
+            'custom_object_detection_config_path': default_custom_object_detection_config_path,
+            'param_overrides': 'object_detection.custom_onnx_file:=' + default_model_onnx_path,
         }.items()
     )
 
