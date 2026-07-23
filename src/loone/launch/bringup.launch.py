@@ -11,9 +11,11 @@ Starts, in order:
   5. spawners               - joint_state_broadcaster + asv_forward_controller.
   6. thrust_mixer           - /cmd_vel -> /asv_forward_controller/commands.
   7. pca9685_driver         - /asv/joint_commands -> PCA9685 over I2C.
-  8. navigation_launch.py   - nav2 planner/controller/costmaps -> /cmd_vel.
+  8. phone                  - phone GPS (ADB) -> /navsatfix, fused into the ZED's
+                              pos_tracking via gnss_fusion (config/common_stereo.yaml).
+  9. navigation_launch.py   - nav2 planner/controller/costmaps -> /cmd_vel.
 
-The old phone/task/motor/path_planning nodes are intentionally NOT started here.
+The old task/motor/path_planning nodes are intentionally NOT started here.
 Send goals with RViz "2D Goal Pose" or a NavigateToPose action client.
 
 Usage:
@@ -148,7 +150,16 @@ def generate_launch_description():
         condition=IfCondition(sim),
     )
 
-    # 8. nav2 (produces /cmd_vel). No AMCL/map_server -- SLAM Toolbox owns those.
+    # 8. Phone GPS bridge: publishes NavSatFix on /navsatfix, which the ZED wrapper's
+    #    gnss_fusion (config/common_stereo.yaml) subscribes to and fuses into pos_tracking.
+    phone = Node(
+        package='loone',
+        executable='phone',
+        name='phone',
+        output='screen',
+    )
+
+    # 9. nav2 (produces /cmd_vel). No AMCL/map_server -- SLAM Toolbox owns those.
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_share, 'launch', 'navigation_launch.py')),
@@ -181,5 +192,6 @@ def generate_launch_description():
         thrust_mixer,
         pca9685_driver,
         sim_state_echo,
+        phone,
         nav2_launch,
     ])
