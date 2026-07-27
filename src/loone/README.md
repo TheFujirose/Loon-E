@@ -18,10 +18,10 @@ flowchart LR
     NAV2["nav2<br/>controller_server"] -->|"/cmd_vel"| TM["thrust_mixer"]
     TM -->|"asv_forward_controller/commands"| RC["ros2_control<br/>(asv_forward_controller +<br/>joint_state_broadcaster)"]
     RC -->|"/asv/joint_commands"| BN["busio_node<br/>(I2C: PCA9685 + INA3221)"]
-    BN -->|"PWM"| SERVOS["Servos / ESCs<br/>(prop_l, prop_r, rudder)"]
+    BN -->|"PWM"| SERVOS["Servos / ESCs<br/>(prop_l, prop_r, rudder_r, rudder_l)"]
     BN -->|"/asv/joint_states<br/>(open-loop echo)"| RC
     RC -->|"/joint_states"| RSP["robot_state_publisher"]
-    RSP -->|"TF"| LINKS["prop_l / prop_r / rudder links"]
+    RSP -->|"TF"| LINKS["prop_l / prop_r / rudder_r / rudder_l links"]
 
     BN -->|"battery_raw"| BAT["battery_node"]
     BAT -->|"battery_status/prop_l"| BS1[("BatteryState")]
@@ -34,8 +34,10 @@ flowchart LR
     PHONE -->|"/phone"| APP[("lat/lon/speed/heading")]
 ```
 
-- **`thrust_mixer`** mixes nav2's `/cmd_vel` (surge + yaw) into three
-  normalized `[prop_l, prop_r, rudder]` fractions (0.0-1.0, neutral ~0.5/0.55).
+- **`thrust_mixer`** mixes nav2's `/cmd_vel` (surge + yaw) into four
+  normalized `[prop_l, prop_r, rudder_r, rudder_l]` fractions (0.0-1.0, neutral
+  ~0.5/0.55). The boat is a twin-float catamaran with one rudder per float, so
+  the single computed rudder value is mirrored to both.
 - **`busio_node`** is the only node that opens the I2C bus. It converts those
   fractions into PCA9685 pulse widths, and also reads the INA3221 and
   publishes raw bus voltages on `battery_raw`.
@@ -75,7 +77,7 @@ by `bringup.launch.py`; goals come from RViz "2D Goal Pose" or a
 | File | Executable | Status | Purpose |
 |------|-----------|--------|---------|
 | `phone.py` | `phone` | Current | ADB/TCP bridge: phone GPS, speed, heading → `/phone`, `/navsatfix` |
-| `thrust_mixer.py` | `thrust_mixer` | Current | Mixes nav2 `/cmd_vel` into `[prop_l, prop_r, rudder]` fractions |
+| `thrust_mixer.py` | `thrust_mixer` | Current | Mixes nav2 `/cmd_vel` into `[prop_l, prop_r, rudder_r, rudder_l]` fractions |
 | `busio_node.py` | `busio_node` | Current | Only node touching I2C: writes PCA9685 PWM, reads INA3221 raw voltages |
 | `battery_node.py` | `battery_node` | Current | Converts raw INA3221 voltages into `sensor_msgs/BatteryState` |
 | `sim_state_echo.py` | `sim_state_echo` | Current (sim only) | Stands in for `busio_node`'s open-loop state echo in simulation |

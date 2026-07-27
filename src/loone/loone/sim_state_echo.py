@@ -31,17 +31,20 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
-# Joint names as declared in loone_asv.urdf.xacro (src/loone_urdf).
+# Joint names as declared in loone_asv.urdf.xacro (src/loone_urdf). This is a
+# twin-float catamaran: EACH float has its own rudder (rudder_r_joint/
+# rudder_l_joint), not one shared rudder_joint.
 # Publishing state for a joint ros2_control does not know about is harmless;
-# MISSING one leaves that state interface at NaN, so always echo all three.
-JOINTS = ['prop_l_joint', 'prop_r_joint', 'rudder_joint']
+# MISSING one leaves that state interface at NaN, so always echo all four.
+JOINTS = ['prop_l_joint', 'prop_r_joint', 'rudder_r_joint', 'rudder_l_joint']
 
 # Neutral fractions, matching thrust_mixer.py / busio_node.py defaults. These
 # seed the state before the first command arrives so ros2_control never sees NaN.
 NEUTRAL = {
     'prop_l_joint': 0.5,
     'prop_r_joint': 0.5,
-    'rudder_joint': 0.55,
+    'rudder_r_joint': 0.55,
+    'rudder_l_joint': 0.55,
 }
 
 

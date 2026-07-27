@@ -6,7 +6,7 @@ touches the I2C bus / PCA9685 / INA3221 hardware:
     ros2_control (topic_based_ros2_control / TopicBasedSystem)
         --> /asv/joint_commands (sensor_msgs/JointState)  [command interface values]
         --> [THIS NODE] fraction -> servo channel over I2C
-        --> PCA9685  (ch0 prop_l, ch1 prop_r, ch2 rudder)
+        --> PCA9685  (ch0 prop_l, ch1 prop_r, ch2 rudder_r, ch3 rudder_l)
     and it echoes measured state back:
         --> /asv/joint_states (sensor_msgs/JointState)  [state interface values]
 
@@ -85,20 +85,23 @@ class BusioNode(Node):
         self._init_servos(prop_min, prop_max, rudder_min, rudder_max)
 
         # Map ros2_control joint names -> the servo object on each PCA9685 channel.
-        # Channel assignment is unchanged from motor.py: ch0 prop_l, ch1 prop_r, ch2 rudder.
+        # Channel assignment: ch0 prop_l, ch1 prop_r, ch2 rudder_r, ch3 rudder_l.
         # These names MUST match the joints declared in loone_asv.urdf.xacro
-        # (src/loone_urdf) / ros2_control.yaml. That URDF models a single
-        # rudder_joint, matching the one physical rudder servo 1:1.
+        # (src/loone_urdf) / ros2_control.yaml. That URDF is a twin-float catamaran:
+        # EACH float has its own rudder (rudder_r_joint/rudder_l_joint), driven by
+        # two separate physical servos -- not one shared rudder_joint.
         self.joint_to_servo = {
             'prop_l_joint': self.prop_l,
             'prop_r_joint': self.prop_r,
-            'rudder_joint': self.rudder,
+            'rudder_r_joint': self.rudder_r,
+            'rudder_l_joint': self.rudder_l,
         }
         # Per-joint neutral used at startup, on stale commands, and on shutdown.
         self.joint_neutral = {
             'prop_l_joint': self.prop_neutral,
             'prop_r_joint': self.prop_neutral,
-            'rudder_joint': self.rudder_center,
+            'rudder_r_joint': self.rudder_center,
+            'rudder_l_joint': self.rudder_center,
         }
 
         # ---- ROS wiring ----
@@ -170,20 +173,27 @@ class BusioNode(Node):
                 f"limits [{self.PULSE_MIN_LIMIT}, {self.PULSE_MAX_LIMIT}] us.")
 
     def _init_servos(self, prop_min, prop_max, rudder_min, rudder_max) -> None:
-        """Set up the three servo channels on the PCA9685 (ported from motor.py)."""
+        """Set up the four servo channels on the PCA9685 (ported from motor.py).
+
+        Both rudders share the same rudder_min/rudder_max pulse range -- there is
+        no evidence yet that the two physical rudder servos need different limits.
+        """
         self._validate_pulse_range(prop_min, prop_max, "prop_l (ch 0)")
         self._validate_pulse_range(prop_min, prop_max, "prop_r (ch 1)")
-        self._validate_pulse_range(rudder_min, rudder_max, "rudder (ch 2)")
+        self._validate_pulse_range(rudder_min, rudder_max, "rudder_r (ch 2)")
+        self._validate_pulse_range(rudder_min, rudder_max, "rudder_l (ch 3)")
 
         try:
             self.prop_l = servo.Servo(self.pca.channels[0], min_pulse=prop_min, max_pulse=prop_max)
             self.prop_r = servo.Servo(self.pca.channels[1], min_pulse=prop_min, max_pulse=prop_max)
-            self.rudder = servo.Servo(self.pca.channels[2], min_pulse=rudder_min, max_pulse=rudder_max)
+            self.rudder_r = servo.Servo(self.pca.channels[2], min_pulse=rudder_min, max_pulse=rudder_max)
+            self.rudder_l = servo.Servo(self.pca.channels[3], min_pulse=rudder_min, max_pulse=rudder_max)
         except Exception as e:
             self.get_logger().error(f"Failed to initialize servo channels: {e}")
             raise
 
-        self.get_logger().info("Servo PWM channels initialized (ch0 prop_l, ch1 prop_r, ch2 rudder).")
+        self.get_logger().info(
+            "Servo PWM channels initialized (ch0 prop_l, ch1 prop_r, ch2 rudder_r, ch3 rudder_l).")
 
     # ------------------------------------------------------------------ command handling
     def _apply(self, commands: dict) -> None:

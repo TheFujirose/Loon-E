@@ -5,7 +5,7 @@
 #   * joint_state_broadcaster  - reads the state interfaces and publishes /joint_states
 #     (this is what robot_state_publisher uses to place the prop/rudder links in TF).
 #   * asv_forward_controller   - a stock ForwardCommandController that forwards the
-#     [prop_l, prop_r, rudder] fractions it receives on
+#     [prop_l, prop_r, rudder_r, rudder_l] fractions it receives on
 #     /asv_forward_controller/commands straight to the "position" command interfaces.
 #
 # The thrust_mixer node publishes to /asv_forward_controller/commands; the hardware
@@ -13,9 +13,10 @@
 # busio_node node. See le1000_urdf_t4/urdf/loone_asv.urdf.xacro (src/loone_urdf)
 # for the interface declarations.
 #
-# NOTE: unlike le1000_urdf_t4.urdf.xacro (which models one rudder joint per float),
-# loone_asv.urdf.xacro has a single rudder_joint matching the one physical rudder
-# servo 1:1 -- no duplicate-joint fan-out needed here.
+# NOTE: loone_asv.urdf.xacro now matches le1000_urdf_t4.urdf.xacro's twin-float
+# layout -- EACH float has its own rudder (rudder_r_joint/rudder_l_joint), not one
+# shared rudder_joint. thrust_mixer still derives a single steering value from yaw
+# rate and mirrors it to both rudder command interfaces (see thrust_mixer.mix()).
 
 controller_manager:
   ros__parameters:
@@ -31,12 +32,13 @@ controller_manager:
       type: forward_command_controller/ForwardCommandController
 
 # ForwardCommandController: the `joints` order here defines the order of the
-# Float64MultiArray that thrust_mixer must publish -> [prop_l, prop_r, rudder].
+# Float64MultiArray that thrust_mixer must publish -> [prop_l, prop_r, rudder_r, rudder_l].
 asv_forward_controller:
   ros__parameters:
     joints:
       - prop_l_joint
       - prop_r_joint
-      - rudder_joint
+      - rudder_r_joint
+      - rudder_l_joint
     # Must match the command_interface name in loone_asv.urdf.xacro.
     interface_name: position

@@ -1,9 +1,9 @@
-"""Thrust mixer: nav2 /cmd_vel -> normalized [prop_l, prop_r, rudder] commands.
+"""Thrust mixer: nav2 /cmd_vel -> normalized [prop_l, prop_r, rudder_r, rudder_l] commands.
 
 This node is the "control" layer of the chained-controls stack:
 
     nav2 controller_server --> /cmd_vel (geometry_msgs/Twist)
-        --> [THIS NODE] mixes surge + yaw into three servo fractions
+        --> [THIS NODE] mixes surge + yaw into four servo fractions
         --> /asv_forward_controller/commands (std_msgs/Float64MultiArray)
         --> forward_command_controller (ros2_control) --> hardware command interfaces
 
@@ -20,8 +20,10 @@ Output convention (matches the old motor.py servo fractions):
     * rudder:     0.0 = full one way, `center` (~0.55) = straight, 1.0 = full other way
     The busio_node node converts these fractions to PCA9685 pulse widths.
 
-The URDF (loone_asv, src/loone_urdf) models a single rudder_joint, matching
-the one physical rudder servo 1:1.
+The URDF (loone_asv, src/loone_urdf) is a twin-float catamaran: EACH float has its
+own rudder (rudder_r_joint/rudder_l_joint), not one shared rudder_joint. There is
+still only one steering input (yaw rate), so mix() computes a single rudder value
+and mirrors it to both rudder command interfaces.
 """
 
 import rclpy
@@ -97,12 +99,13 @@ class ThrustMixer(Node):
         self.last_cmd_time = self.get_clock().now()
 
     def mix(self, cmd: Twist) -> list:
-        """Map a Twist to [prop_l, prop_r, rudder] fractions.
+        """Map a Twist to [prop_l, prop_r, rudder_r, rudder_l] fractions.
 
         This is the piece most worth tuning/replacing. The default is a simple
         differential-thrust + rudder mix -- the same idea as motor.py's drive():
         forward speed sets a base throttle, yaw rate biases the two propellers
-        apart and deflects the rudder.
+        apart and deflects the rudder. Both rudders get the same value (mirrored)
+        since there is only one steering input; see module docstring.
 
         Args:
             cmd: desired body-frame velocity. Uses linear.x (surge, m/s) and
@@ -110,7 +113,7 @@ class ThrustMixer(Node):
                  boat is under-actuated.
 
         Returns:
-            [prop_l, prop_r, rudder] as fractions (see module docstring).
+            [prop_l, prop_r, rudder_r, rudder_l] as fractions (see module docstring).
         """
         surge = cmd.linear.x
         # nav2/REP-103 angular.z is CCW-positive (turn left). motor.py's proven rudder/prop
@@ -133,25 +136,30 @@ class ThrustMixer(Node):
         #   * slew-rate limiting (don't jump the throttle in one tick)
         #   * reverse handling (props below 0.5 -- confirm your ESCs are bidirectional)
         #   * saturation priority (favor turning vs. speed when both saturate)
+        #   * independent per-float rudder trim, if the twin rudders ever need to
+        #     differ (currently mirrored -- see module docstring)
         #   * OPTIONAL inner heading PID for current/wind rejection: subscribe /odom,
         #     compare measured yaw to an integrated heading setpoint, and add the PID
         #     output into `diff`/`rudder`. Port kp/ki/kd + clamp from motor.py drive().
         #     nav2 already closes the heading loop at the trajectory level, so this is
         #     off by default; add it only if drift is a problem on the water.
-        return [prop_l, prop_r, rudder]
+        return [prop_l, prop_r, rudder, rudder]
 
     def publish_commands(self) -> None:
         """Timer callback: publish the mixed command, or neutral if the command is stale."""
         age = (self.get_clock().now() - self.last_cmd_time).nanoseconds * 1e-9
         if age > self.cmd_timeout:
-            # Dead-man: no fresh command -> stop the props and center the rudder.
-            fractions = [self.prop_neutral, self.prop_neutral, self.rudder_center]
+            # Dead-man: no fresh command -> stop the props and center both rudders.
+            fractions = [
+                self.prop_neutral, self.prop_neutral,
+                self.rudder_center, self.rudder_center,
+            ]
         else:
             fractions = self.mix(self.last_cmd)
 
         msg = Float64MultiArray()
         # ORDER MATTERS: must match the `joints:` order in ros2_control.yaml
-        # (asv_forward_controller) -> [prop_l_joint, prop_r_joint, rudder_joint].
+        # (asv_forward_controller) -> [prop_l_joint, prop_r_joint, rudder_r_joint, rudder_l_joint].
         msg.data = [float(x) for x in fractions]
         self.cmd_pub.publish(msg)
 
