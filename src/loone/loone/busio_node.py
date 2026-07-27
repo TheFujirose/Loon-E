@@ -121,7 +121,7 @@ class BusioNode(Node):
 
         self.last_cmd_time = self.get_clock().now()
         # Watchdog: periodically check for stale commands and re-publish state.
-        self.timer = self.create_timer(0.1, self.watchdog)
+        #self.timer = self.create_timer(0.1, self.watchdog)
         self.battery_timer = self.create_timer(timer_period, self.publish_battery_raw)
 
         self.get_logger().info('busio_node ready, channels at neutral.')
