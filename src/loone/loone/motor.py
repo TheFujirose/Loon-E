@@ -77,7 +77,7 @@ class MotorNode(Node):
 
         timer_period = self.get_parameter('timer_period').value
         freq = self.get_parameter('freq').value
-        self.center = self.get_parameter('center').value
+        self.center = self.get_parameter('rudder_center').value
         prop_min = self.get_parameter('prop_min').value
         prop_max = self.get_parameter('prop_max').value
         rudder_min = self.get_parameter('rudder_min').value
