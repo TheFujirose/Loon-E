@@ -46,6 +46,10 @@ setup(
             # Simulation only: stands in for busio_node's open-loop state echo
             # when the real driver is not running (see sim_state_echo.py).
             'sim_state_echo = loone.sim_state_echo:main',
+            # Simulation only: stands in for phone.py's GPS, which needs adb and a
+            # real handset. Without it navsat_transform never latches a datum and
+            # task1.launch.py hangs on /fromLL (see sim_gnss.py).
+            'sim_gnss = loone.sim_gnss:main',
             # Bench-test utilities (see spin.launch.py / motor_test.launch.py / forward.launch.py).
             'spin_node = loone.spin_node:main',
             'motor_test_node = loone.motor_test_node:main',

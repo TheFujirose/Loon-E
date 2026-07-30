@@ -52,6 +52,8 @@ def generate_launch_description():
     zed_node_name = LaunchConfiguration('zed_node_name')
     use_sim_time = LaunchConfiguration('use_sim_time')
     sim = LaunchConfiguration('sim')
+    sim_address = LaunchConfiguration('sim_address')
+    sim_port = LaunchConfiguration('sim_port')
 
     # Expand the xacro once and share the result with rsp + controller_manager.
     # Robot description lives in the le1000_urdf_t4 submodule (src/loone_urdf),
@@ -59,8 +61,17 @@ def generate_launch_description():
     # loone_asv description for now instead of the CAD-derived le1000_urdf_t4 one;
     # swap this filename back to switch.)
     xacro_path = os.path.join(urdf_share, 'urdf', 'loone_asv.urdf.xacro')
+    # camera_name/camera_model are forwarded into the xacro because it now includes
+    # the ZED wrapper's own zed_macro and instantiates the camera as the robot's ROOT
+    # link. The names must agree with what the wrapper publishes -- expand the xacro
+    # with a different camera_name than the wrapper uses and the two halves of the
+    # TF tree simply never join up.
     robot_description = {
-        'robot_description': ParameterValue(Command(['xacro ', xacro_path]), value_type=str)
+        'robot_description': ParameterValue(
+            Command(['xacro ', xacro_path,
+                     ' camera_name:=', camera_name,
+                     ' camera_model:=', camera_model]),
+            value_type=str)
     }
 
     ros2_control_params = os.path.join(loone_share, 'config', 'ros2_control.yaml')
@@ -75,6 +86,11 @@ def generate_launch_description():
             'camera_model': camera_model,
             'zed_node_name': zed_node_name,
             'use_sim_time': use_sim_time,
+            # `sim` drives the ZED wrapper's simulation mode as well as the
+            # actuator swap below, so the two can never disagree.
+            'sim_mode': sim,
+            'sim_address': sim_address,
+            'sim_port': sim_port,
         }.items()
     )
 
@@ -86,32 +102,29 @@ def generate_launch_description():
         parameters=[robot_description, {'use_sim_time': use_sim_time}],
     )
 
-    # 3. Bridge the ZED camera frame to base_link. ZED publishes odom -> <cam>_camera_link,
-    #    so base_link is defined as a child of the camera frame here.
-    #    TODO(team): measure the real mount. These are the camera->base_link offsets
-    #    (i.e. the negative of where the camera sits relative to the boat center),
-    #    in metres/radians. Order: x y z yaw pitch roll.
-    static_tf_cam_to_base = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='cam_to_base_link',
-        output='screen',
-        arguments=[
-            '--x', '0.0', '--y', '0.0', '--z', '0.0',
-            '--yaw', '0.0', '--pitch', '0.0', '--roll', '0.0',
-            '--frame-id', [camera_name, '_camera_link'],
-            '--child-frame-id', 'base_link',
-        ],
-    )
+    # 3. (removed) There is no longer a static_transform_publisher bridging the camera
+    #    to base_link. loone_asv.urdf.xacro now instantiates the ZED wrapper's own
+    #    zed_macro as the robot's ROOT link and carries the camera->base_link offset
+    #    as the `cam_1_to_base_link` joint, so robot_state_publisher emits it and the
+    #    mount geometry lives in exactly one place. slam_launch.py passes
+    #    publish_urdf:=false so the wrapper does not start a competing
+    #    robot_state_publisher for the same camera.
 
     # 4. controller_manager: hosts topic_based_ros2_control hardware + the controllers.
     #    NOTE (Humble): robot_description is passed as a parameter here. On Iron/Jazzy
     #    the controller_manager instead reads it from the /robot_description topic.
+    #    use_sim_time comes LAST so it wins over the `false` baked into
+    #    ros2_control.yaml. Without this override the controller_manager runs its
+    #    update loop on the wall clock while every other node is on /clock, so
+    #    command and state stamps disagree by however far sim time has drifted
+    #    from real time -- which surfaces as jittery or ignored commands rather
+    #    than as an obvious clock error.
     controller_manager = Node(
         package='controller_manager',
         executable='ros2_control_node',
         output='screen',
-        parameters=[robot_description, ros2_control_params],
+        parameters=[robot_description, ros2_control_params,
+                    {'use_sim_time': use_sim_time}],
     )
 
     # 5. Spawn the broadcaster + forward controller into the controller_manager.
@@ -175,11 +188,32 @@ def generate_launch_description():
 
     # 9. Phone GPS bridge: publishes NavSatFix on /navsatfix, which the ZED wrapper's
     #    gnss_fusion (config/common_stereo.yaml) subscribes to and fuses into pos_tracking.
+    #    Excluded in sim for the same reason as busio_node: it shells out to `adb` at
+    #    startup and dies with FileNotFoundError where no phone/adb is attached.
+    #    Isaac Sim supplies pose directly, so there is nothing for it to contribute.
     phone = Node(
         package='loone',
         executable='phone',
         name='phone',
         output='screen',
+        condition=UnlessCondition(sim),
+    )
+
+    # 9a. Simulation stand-in for phone.py's GPS. navsat_transform will not latch a
+    #     datum or answer /fromLL without a fix, so without this task1.launch.py
+    #     hangs on "Waiting for /fromLL service" in sim. Derives lat/lon from the
+    #     simulated odometry -- see sim_gnss.py for why this is not done inside
+    #     Isaac Sim (no rclpy in Kit).
+    sim_gnss = Node(
+        package='loone',
+        executable='sim_gnss',
+        name='sim_gnss',
+        output='screen',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'odom_topic': ['/', camera_name, '/', zed_node_name, '/odom'],
+        }],
+        condition=IfCondition(sim),
     )
 
     # 9b. GPS<->map/odom conversion utility -- NOT part of the TF/localization chain
@@ -223,11 +257,19 @@ def generate_launch_description():
                               description='Use /clock simulated time. Keep false on the real boat.'),
         DeclareLaunchArgument('sim', default_value='false',
                               description='Simulation mode: swap busio_node for sim_state_echo '
-                                          '(Isaac Sim drives the actuators). Usually set together '
-                                          'with use_sim_time:=true.'),
+                                          '(Isaac Sim drives the actuators), drop the phone/battery '
+                                          'nodes, and point the ZED wrapper at the simulator. '
+                                          'Usually set together with use_sim_time:=true.'),
+        DeclareLaunchArgument('sim_address', default_value='127.0.0.1',
+                              description='Host running Isaac Sim, as seen from this machine. '
+                                          'The ZED X is a Jetson-only camera, so this stack runs '
+                                          'on the Jetson while Isaac Sim runs on the GPU box -- '
+                                          'in that split this must be the GPU box\'s LAN address, '
+                                          'and ros2_bridge.py needs ZED_USE_IPC = False.'),
+        DeclareLaunchArgument('sim_port', default_value='30000',
+                              description='ZED streaming port in Isaac Sim (ZED_STREAMING_PORT).'),
         slam_launch,
         robot_state_publisher,
-        static_tf_cam_to_base,
         controller_manager,
         joint_state_broadcaster_spawner,
         asv_forward_controller_spawner,
@@ -236,6 +278,7 @@ def generate_launch_description():
         sim_state_echo,
         battery_node,
         phone,
+        sim_gnss,
         navsat_transform,
         nav2_launch,
     ])

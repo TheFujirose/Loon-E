@@ -50,6 +50,8 @@ def generate_launch_description():
     zed_node_name = LaunchConfiguration('zed_node_name')
     use_sim_time = LaunchConfiguration('use_sim_time')
     sim = LaunchConfiguration('sim')
+    sim_address = LaunchConfiguration('sim_address')
+    sim_port = LaunchConfiguration('sim_port')
     gps_waypoints_json = LaunchConfiguration('gps_waypoints_json')
     gps_waypoints_file = LaunchConfiguration('gps_waypoints_file')
     spin_before_mission = LaunchConfiguration('spin_before_mission')
@@ -70,6 +72,11 @@ def generate_launch_description():
             'zed_node_name': zed_node_name,
             'use_sim_time': use_sim_time,
             'sim': sim,
+            # Forwarded, not defaulted: the ZED X is Jetson-only, so in sim this
+            # stack runs on the Jetson while Isaac Sim runs on the GPU box, and
+            # bringup's 127.0.0.1 default would look for the simulator locally.
+            'sim_address': sim_address,
+            'sim_port': sim_port,
         }.items()
     )
 
@@ -126,7 +133,13 @@ def generate_launch_description():
                               description='Use /clock simulated time. Keep false on the real boat.'),
         DeclareLaunchArgument('sim', default_value='false',
                               description='Simulation mode: swap busio_node for sim_state_echo '
-                                          '(Isaac Sim drives the actuators).'),
+                                          '(Isaac Sim drives the actuators) and phone for '
+                                          'sim_gnss, which is what makes /fromLL work here.'),
+        DeclareLaunchArgument('sim_address', default_value='127.0.0.1',
+                              description='Host running Isaac Sim, as seen from this machine. '
+                                          'start-all.sh passes the GPU box\'s LAN address.'),
+        DeclareLaunchArgument('sim_port', default_value='30000',
+                              description='ZED streaming port in Isaac Sim.'),
         DeclareLaunchArgument('gps_waypoints_json', default_value='',
                               description='Inline JSON list of GPS points, e.g. '
                                           '[{"lat":43.65,"lon":-79.38}]. Takes precedence over '

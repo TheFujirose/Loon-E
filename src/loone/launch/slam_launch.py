@@ -43,6 +43,9 @@ def generate_launch_description():
     zed_node_name = LaunchConfiguration('zed_node_name')
     slam_params_file = LaunchConfiguration('slam_params_file')
     use_sim_time = LaunchConfiguration('use_sim_time')
+    sim_mode = LaunchConfiguration('sim_mode')
+    sim_address = LaunchConfiguration('sim_address')
+    sim_port = LaunchConfiguration('sim_port')
 
     zed_wrapper_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -57,7 +60,20 @@ def generate_launch_description():
             'camera_model': camera_model,
             'node_name': zed_node_name,
             'publish_map_tf': 'false',  # SLAM Toolbox publishes map -> odom instead
+            # Our robot_state_publisher owns the whole description now, including the
+            # ZED's own frames -- loone_asv.urdf.xacro includes zed_macro and makes the
+            # camera the root link. Left at its default `true`, the wrapper starts a
+            # SECOND robot_state_publisher for the same camera, which is two competing
+            # robot descriptions on the graph.
+            'publish_urdf': 'false',
             'use_sim_time': use_sim_time,
+            # These three override simulation.* in the submodule's common_stereo.yaml
+            # (see zed_camera.launch.py's node_parameters overrides), so sim vs
+            # hardware is a launch argument now -- there is no need to switch the
+            # zedx submodule between its 'master' and 'simulator' branches.
+            'sim_mode': sim_mode,
+            'sim_address': sim_address,
+            'sim_port': sim_port,
             'custom_object_detection_config_path': default_custom_object_detection_config_path,
             'param_overrides': 'object_detection.custom_onnx_file:=' + default_model_onnx_path,
         }.items()
@@ -119,6 +135,23 @@ def generate_launch_description():
             'use_sim_time',
             default_value='false',
             description='Use simulated /clock time instead of the system clock.'),
+        DeclareLaunchArgument(
+            'sim_mode',
+            default_value='false',
+            description='Connect the ZED wrapper to a simulation server instead of a real '
+                        'camera. Overrides simulation.sim_enabled in common_stereo.yaml.',
+            choices=['true', 'false']),
+        DeclareLaunchArgument(
+            'sim_address',
+            default_value='127.0.0.1',
+            description='Address of the Isaac Sim host running the ZED Camera Helper. '
+                        'Leave at 127.0.0.1 when Isaac Sim and this stack share a machine; '
+                        'set it to the simulator host when they do not.'),
+        DeclareLaunchArgument(
+            'sim_port',
+            default_value='30000',
+            description='Port of the ZED streaming server in Isaac Sim '
+                        '(ZED_STREAMING_PORT in ros2_bridge.py).'),
         zed_wrapper_launch,
         depth_to_laserscan_node,
         slam_toolbox_launch,
