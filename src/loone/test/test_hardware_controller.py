@@ -30,6 +30,7 @@ def _patch_hardware(stack, pca_side_effect=None, ina_side_effect=None):
     # no matter the arguments, so without this side_effect all four servo
     # attributes would alias one fake object.
     mocks['servo'].ContinuousServo.side_effect = lambda *args, **kwargs: MagicMock()
+    mocks['servo'].Servo.side_effect = lambda *args, **kwargs: MagicMock()
 
     # Each DigitalInOut(pin) is a separate line (auto / e-stop).
     mocks['digitalio'].DigitalInOut.side_effect = lambda *args, **kwargs: MagicMock()
@@ -141,9 +142,10 @@ class TestConstruction:
         hardware_mocks['servo'].ContinuousServo.assert_has_calls([
             call(channels[0], min_pulse=1120, max_pulse=1880),  # prop_l
             call(channels[1], min_pulse=1120, max_pulse=1880),  # prop_r
-            call(channels[2], min_pulse=1220, max_pulse=1820),  # carriage
-            call(channels[3], min_pulse=1120, max_pulse=1880),  # launcher
+            call(channels[3], min_pulse=1100, max_pulse=1900),  # launcher
         ])
+        hardware_mocks['servo'].Servo.assert_called_once_with(
+            channels[2], actuation_range=180, min_pulse=500, max_pulse=2500)  # carriage
         assert hardware.red is channels[4]
         assert hardware.green is channels[5]
 
@@ -170,7 +172,6 @@ class TestConstruction:
     def test_starts_with_everything_neutral(self, hardware):
         assert hardware.prop_l.throttle == 0.0
         assert hardware.prop_r.throttle == 0.0
-        assert hardware.carriage.throttle == 0.0
         assert hardware.launcher.throttle == 0.0
         assert hardware.red.duty_cycle == 0x0000
         assert hardware.green.duty_cycle == 0x0000

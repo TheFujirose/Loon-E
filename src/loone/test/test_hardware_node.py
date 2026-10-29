@@ -59,8 +59,8 @@ class TestInit:
 
         assert kwargs['freq'] == 50
         assert kwargs['prop_min'] == 1120 and kwargs['prop_max'] == 1880
-        assert kwargs['carriage_min'] == 1220 and kwargs['carriage_max'] == 1820
-        assert kwargs['launcher_min'] == 1120 and kwargs['launcher_max'] == 1880
+        assert kwargs['carriage_min'] == 500 and kwargs['carriage_max'] == 2500
+        assert kwargs['launcher_min'] == 1100 and kwargs['launcher_max'] == 1900
         assert kwargs['propellor_kwargs'] == {
             'factor': 0.5, 'speed': 0.2, 'diff': 0.4,
             'kp': 2.0, 'ki': 0.5, 'kd': 0.02, 'max_output': 45.0,

@@ -26,6 +26,7 @@
     timer_period: 0.5 # Timer period in seconds
     i2c: True        # If connection to I2C devices required
     freq: 50          # PCA9685 PWM frequency in Hz
+    pca_clock: 25760154  # PCA9685 oscillator in Hz; set to 25e6 * measured PWM Hz / freq (measured 51.55 Hz at 50)
     factor: 0.5       # Propeller cruise throttle while driving (-1 to 1)
     speed: 0.2        # Propeller throttle for plain forward / reverse (-1 to 1)
     center: 0.5      # Rudder center fraction (0 degrees)
@@ -38,10 +39,11 @@
 
     prop_min: 1120    # Propeller servo min pulse width (µs)
     prop_max: 1880    # Propeller servo max pulse width (µs)
-    carriage_min: 1220  # Ball carriage servo min pulse width (µs)
-    carriage_max: 1820  # Ball carriage servo max pulse width (µs)
-    launcher_min: 1120  # Ball launcher ESC min pulse width (µs)
-    launcher_max: 1880  # Ball launcher ESC max pulse width (µs)
+    carriage_min: 500   # Ball carriage servo min pulse width (µs)
+    carriage_max: 2500  # Ball carriage servo max pulse width (µs)
+    carriage_range: 180 # Ball carriage servo travel (degrees): 180 or 270 model
+    launcher_min: 1100  # Ball launcher ESC min pulse width (µs)
+    launcher_max: 1900  # Ball launcher ESC max pulse width (µs)
     rudder_min: 1220  # Rudder servo min pulse width (µs)
     rudder_max: 1820  # Rudder servo max pulse width (µs)
 

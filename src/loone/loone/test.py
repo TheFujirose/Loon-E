@@ -20,8 +20,9 @@ class HardwareTest(Node):
 
     def run(self) -> None:
         # speed is the throttle forward() uses for the motor pulse below.
+        # pca_clock is this board's measured oscillator (keep in sync with config.yaml).
         hardware = HardwareController(
-            freq=50, propellor_kwargs={'speed': 0.12}, logger=self.get_logger())
+            freq=50, pca_clock=25760154, propellor_kwargs={'speed': 0.12}, logger=self.get_logger())
         try:
             if hardware.battery is None:
                 self.get_logger().warning("No INA3221, skipping battery levels.")
@@ -31,18 +32,20 @@ class HardwareTest(Node):
                         f"{state.location} battery: {round(state.percentage * 100)}% "
                         f"({state.voltage:.1f} V)")
 
-            input('Load ball, then press Enter to run the loader.')
-            hardware.ball_launcher.load()
+            # input('Load ball, then press Enter to run the loader.')
+            # hardware.ball_launcher.load(time=5, power=0.5)
 
-            self.get_logger().info("Motors...")
-            hardware.propellors.forward()
-            time.sleep(0.5)
-            hardware.propellors.stop()
+            # self.get_logger().info("Motors...")
+            # hardware.propellors.forward()
+            # time.sleep(0.5)
+            # hardware.propellors.stop()
+            input('Load ball, then press Enter to run the loader.')
+            hardware.ball_launcher.load(time=5, power=0.1)
 
             input('Press Enter to launch the ball.')
-            hardware.ball_launcher.launch()
-            input('Load ball, then press Enter to run the loader.')
-            hardware.ball_launcher.load()
+            hardware.ball_launcher.launch(time=5, power=0.3)
+
+            hardware.ball_launcher.cancel()
 
             self.get_logger().info("Party mode!")
             for _ in range(2):

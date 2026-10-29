@@ -43,12 +43,14 @@ class HardwareController:
     def __init__(
         self,
         freq: int = 50,             # PCA9685 PWM frequency (Hz)
+        pca_clock: int = 25_000_000,  # PCA9685 oscillator (Hz); calibrate per board, see _init_busio
         prop_min: int = 1120,       # propeller ESC min pulse (us)
         prop_max: int = 1880,       # propeller ESC max pulse (us)
-        carriage_min: int = 1220,   # ball carriage servo min pulse (us)
-        carriage_max: int = 1820,   # ball carriage servo max pulse (us)
-        launcher_min: int = 1120,   # ball launcher ESC min pulse (us)
-        launcher_max: int = 1880,   # ball launcher ESC max pulse (us)
+        carriage_min: int = 500,    # ball carriage servo min pulse (us), 0 degrees
+        carriage_max: int = 2500,   # ball carriage servo max pulse (us), full travel CCW
+        carriage_range: int = 180,  # ball carriage servo travel (degrees): 180 or 270 model
+        launcher_min: int = 1100,   # ball launcher ESC min pulse (us), Basic ESC full reverse
+        launcher_max: int = 1900,   # ball launcher ESC max pulse (us), Basic ESC full forward
         propellor_kwargs: dict | None = None,   # passed through to PropellorController
         battery_kwargs: dict | None = None,     # passed through to BatteryController
         logger=None,
@@ -56,8 +58,9 @@ class HardwareController:
         # Accepts an rclpy logger (node.get_logger()) or falls back to stdlib logging.
         self.logger = logger if logger is not None else logging.getLogger(__name__)
 
-        self._init_busio(freq)
-        self._init_servos(prop_min, prop_max, carriage_min, carriage_max, launcher_min, launcher_max)
+        self._init_busio(freq, pca_clock)
+        self._init_servos(prop_min, prop_max, carriage_min, carriage_max, carriage_range,
+                          launcher_min, launcher_max)
         self._init_gpio()
 
         self.propellors = PropellorController(
@@ -71,8 +74,14 @@ class HardwareController:
 
     # ------------------------------------------------------------------ setup
 
-    def _init_busio(self, freq) -> None:
-        """Initialize the PCA9685 PWM driver and INA3221 monitor over I2C."""
+    def _init_busio(self, freq, pca_clock=25_000_000) -> None:
+        """Initialize the PCA9685 PWM driver and INA3221 monitor over I2C.
+
+        The PCA9685's internal oscillator is nominally 25 MHz but varies by a few
+        percent per board, and every pulse width scales with that error. The ESC
+        neutral deadband is only 1500 +/- 25 us, so pca_clock should be the
+        measured value: 25e6 * (measured PWM Hz) / (configured freq).
+        """
         if not (PCA_FREQ_MIN <= freq <= PCA_FREQ_MAX):
             self.logger.error(
                 f"PCA9685 frequency {freq} Hz out of range "
@@ -86,13 +95,13 @@ class HardwareController:
             raise
 
         try:
-            self.pca = PCA9685(i2c, address = 64)
+            self.pca = PCA9685(i2c, address = 64, reference_clock_speed = pca_clock)
         except Exception as e:
             self.logger.error(f"PCA9685 not found on I2C bus (check wiring/address 0x40): {e}")
             raise
 
         self.pca.frequency = freq
-        self.logger.info(f"PCA9685 initialized at {freq} Hz.")
+        self.logger.info(f"PCA9685 initialized at {freq} Hz (clock {pca_clock} Hz).")
 
         # INA3221 (battery voltage monitor) is a separate chip from the PCA9685 that
         # drives the propellers. A wiring fault on this sensor must not take the
@@ -116,7 +125,8 @@ class HardwareController:
                 f"{channel_name}: pulse range [{min_pulse}, {max_pulse}] us exceeds hardware "
                 f"limits [{PULSE_MIN_LIMIT}, {PULSE_MAX_LIMIT}] us.")
 
-    def _init_servos(self, prop_min, prop_max, carriage_min, carriage_max, launcher_min, launcher_max) -> None:
+    def _init_servos(self, prop_min, prop_max, carriage_min, carriage_max, carriage_range,
+                     launcher_min, launcher_max) -> None:
         """Set up the servo / ESC and LED channels on the PCA9685"""
         self._validate_pulse_range(prop_min, prop_max, "prop_l (ch 0)")
         self._validate_pulse_range(prop_min, prop_max, "prop_r (ch 1)")
@@ -124,10 +134,12 @@ class HardwareController:
         self._validate_pulse_range(launcher_min, launcher_max, "launcher (ch 3)")
 
         try:
-            # Blue Robotics Basic ESCs, so ContinuousServo (throttle -1..1)
+            # Blue Robotics Basic ESCs, so ContinuousServo (throttle -1..1);
+            # the carriage is a positional Servo (angle).
             self.prop_l = servo.ContinuousServo(self.pca.channels[0], min_pulse=prop_min, max_pulse=prop_max)
             self.prop_r = servo.ContinuousServo(self.pca.channels[1], min_pulse=prop_min, max_pulse=prop_max)
-            self.carriage = servo.ContinuousServo(self.pca.channels[2], min_pulse=carriage_min, max_pulse=carriage_max)
+            self.carriage = servo.Servo(self.pca.channels[2], actuation_range=carriage_range,
+                                        min_pulse=carriage_min, max_pulse=carriage_max)
             self.launcher = servo.ContinuousServo(self.pca.channels[3], min_pulse=launcher_min, max_pulse=launcher_max)
             self.red = self.pca.channels[4]
             self.green = self.pca.channels[5]

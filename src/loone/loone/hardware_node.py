@@ -44,15 +44,17 @@ class HardwareNode(Node):
         # ---- Parameters (defaults mirror config.yaml /hardware_node block) ----
         self.declare_parameter('timer_period', 0.5) # Timer period to publish battery / RC / LED state
         self.declare_parameter('freq', 50)          # PCA9685 PWM frequency (Hz)
+        self.declare_parameter('pca_clock', 25000000)  # PCA9685 measured oscillator (Hz)
         self.declare_parameter('factor', 0.5)       # Propeller cruise throttle while driving
         self.declare_parameter('speed', 0.2)        # Propeller throttle for plain forward / reverse
         self.declare_parameter('diff', 0.4)         # Propeller throttle offset when turning in place
         self.declare_parameter('prop_min', 1120)    # propeller ESC min pulse (us)
         self.declare_parameter('prop_max', 1880)    # propeller ESC max pulse (us)
-        self.declare_parameter('carriage_min', 1220)  # ball carriage servo min pulse (us)
-        self.declare_parameter('carriage_max', 1820)  # ball carriage servo max pulse (us)
-        self.declare_parameter('launcher_min', 1120)  # ball launcher ESC min pulse (us)
-        self.declare_parameter('launcher_max', 1880)  # ball launcher ESC max pulse (us)
+        self.declare_parameter('carriage_min', 500)   # ball carriage servo min pulse (us)
+        self.declare_parameter('carriage_max', 2500)  # ball carriage servo max pulse (us)
+        self.declare_parameter('carriage_range', 180) # ball carriage servo travel (degrees)
+        self.declare_parameter('launcher_min', 1100)  # ball launcher ESC min pulse (us)
+        self.declare_parameter('launcher_max', 1900)  # ball launcher ESC max pulse (us)
         self.declare_parameter('kp', 2.0)
         self.declare_parameter('ki', 0.5)
         self.declare_parameter('kd', 0.02)
@@ -71,10 +73,12 @@ class HardwareNode(Node):
         if self.i2c:
             self.hardware = HardwareController(
                 freq=self.get_parameter('freq').value,
+                pca_clock=self.get_parameter('pca_clock').value,
                 prop_min=self.get_parameter('prop_min').value,
                 prop_max=self.get_parameter('prop_max').value,
                 carriage_min=self.get_parameter('carriage_min').value,
                 carriage_max=self.get_parameter('carriage_max').value,
+                carriage_range=self.get_parameter('carriage_range').value,
                 launcher_min=self.get_parameter('launcher_min').value,
                 launcher_max=self.get_parameter('launcher_max').value,
                 propellor_kwargs={
