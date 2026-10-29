@@ -29,7 +29,7 @@ class HardwareController:
     PCA9685 (address 0x40):
         * ch0 prop_l, ch1 prop_r      -> propellors
         * ch2 carriage, ch3 launcher  -> ball_launcher
-        * ch4 red, ch5 green          -> status LED
+        * ch4 red, ch5 green, ch6 blue -> status LED
     INA3221 (address 0x41, optional)  -> battery
     GPIO D12 autonomy, D13 e-stop RC lines
     """
@@ -143,13 +143,14 @@ class HardwareController:
             self.launcher = servo.ContinuousServo(self.pca.channels[3], min_pulse=launcher_min, max_pulse=launcher_max)
             self.red = self.pca.channels[4]
             self.green = self.pca.channels[5]
+            self.blue = self.pca.channels[6]
         except Exception as e:
             self.logger.error(f"Failed to initialize servo channels: {e}")
             raise
 
         self.logger.info(
             "Servo PWM channels initialized (ch0 prop_l, ch1 prop_r, ch2 carriage, "
-            "ch3 launcher, ch4/5 LED).")
+            "ch3 launcher, ch4/5/6 LED).")
 
     def _init_gpio(self) -> None:
         """Set up the autonomy / e-stop RC input lines."""
@@ -170,10 +171,11 @@ class HardwareController:
         """Raw level of the e-stop RC line (D13); low means e-stop is engaged."""
         return bool(self.estop_pin.value)
 
-    def set_led(self, red: bool, green: bool) -> None:
-        """Turn the red / green halves of the status LED fully on or off."""
+    def set_led(self, red: bool, green: bool, blue: bool = False) -> None:
+        """Turn the red / green / blue channels of the status LED fully on or off."""
         self.red.duty_cycle = 0xFFFF if red else 0x0000
         self.green.duty_cycle = 0xFFFF if green else 0x0000
+        self.blue.duty_cycle = 0xFFFF if blue else 0x0000
 
     def stop(self) -> None:
         """Put every actuator in its neutral / off state."""
