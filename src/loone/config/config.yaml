@@ -21,33 +21,36 @@
     computer_port: 5000 # Port on the computer to route to the phone
     host: "127.0.0.1" # Host for the phone node (default is localhost)
 
-/motor:
+/hardware_node:
   ros__parameters:
     timer_period: 0.5 # Timer period in seconds
     i2c: True        # If connection to I2C devices required
     freq: 50          # PCA9685 PWM frequency in Hz
-    factor: 0.75      # Initial propeller throttle factor
+    factor: 0.5       # Propeller cruise throttle while driving (-1 to 1)
+    speed: 0.2        # Propeller throttle for plain forward / reverse (-1 to 1)
     center: 0.5      # Rudder center fraction (0 degrees)
 
     kp: 2.0           # PID proportional gain
     ki: 0.5           # PID integral gain
     kd: 0.02           # PID derivative gain
     max: 90.0         # Max heading error / PID output clamp (degrees)
-    diff: 0.2         # Deviation from stationary state (percentage, 0 to 1)
+    diff: 0.4         # Propeller throttle offset from neutral when turning in place (0 to 1)
 
     prop_min: 1120    # Propeller servo min pulse width (µs)
     prop_max: 1880    # Propeller servo max pulse width (µs)
+    carriage_min: 1220  # Ball carriage servo min pulse width (µs)
+    carriage_max: 1820  # Ball carriage servo max pulse width (µs)
+    launcher_min: 1120  # Ball launcher ESC min pulse width (µs)
+    launcher_max: 1880  # Ball launcher ESC max pulse width (µs)
     rudder_min: 1220  # Rudder servo min pulse width (µs)
     rudder_max: 1820  # Rudder servo max pulse width (µs)
+
+    dw_min: 15.0      # Min voltage of Dewalt battery
+    dw_max: 21.0      # Max voltage of Dewalt battery
+    br_min: 13.2      # Min voltage of Blue Robotics battery
+    br_max: 16.8      # Max voltage of Blue Robotics battery
 
 /path_planning:
   ros__parameters:
     dist: 4
     radius: 2
-
-/battery_node:
-  ros__parameters:
-    dw_min: 15.0      # Min voltage of Dewalt battery
-    dw_max: 21.0      # Max voltage of Dewalt battery
-    br_min: 13.2      # Min voltage of Blue Robotics battery
-    br_max: 16.8      # Max voltage of Blue Robotics battery

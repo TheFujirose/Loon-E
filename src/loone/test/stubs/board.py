@@ -7,3 +7,5 @@
 
 SCL = object()
 SDA = object()
+D12 = object()
+D13 = object()

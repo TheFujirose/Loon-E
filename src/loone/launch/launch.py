@@ -62,15 +62,6 @@ def generate_launch_description():
             condition=UnlessCondition(sim),
         )
 
-    battery_node = Node(
-            package='loone',
-            executable='battery_node',
-            name='battery_node',
-            output='screen',
-            parameters=[config, {'use_sim_time': use_sim_time}],
-            condition=UnlessCondition(sim),
-        )
-
     # Publishes base_link, gps_link and the prop/rudder frames from the URDF.
     # gps_link is the frame phone.py stamps its NavSatFix messages with, and
     # navsat_transform_node needs it in TF to remove the antenna offset from the
@@ -122,7 +113,7 @@ def generate_launch_description():
     )
 
     # The name= values must match the top-level keys in config.yaml (/task,
-    # /motor, /path_planning) for the parameters to be applied.
+    # /hardware_node, /path_planning) for the parameters to be applied.
     # this is commented out because we can just call the node,
     # we want to send data to the GUI without running task.py,
     # it's not a blocking node or anything, it's just better to run on separate terminal
@@ -135,10 +126,10 @@ def generate_launch_description():
     #     parameters=[config, {'use_sim_time': use_sim_time}],
     # )
 
-    motor =  Node(
+    hardware_node = Node(
         package='loone',
-        executable='motor',
-        name='motor',
+        executable='hardware_node',
+        name='hardware_node',
         output='screen',
         parameters=[config, {'use_sim_time': use_sim_time}],
         condition=UnlessCondition(sim),
@@ -157,9 +148,8 @@ def generate_launch_description():
         DeclareLaunchArgument('sim', default_value='false',
                                     description='Simulation mode: swap busio_node for sim_state_echo '
                                                 '(Isaac Sim drives the actuators).'),
-        motor,
+        hardware_node,
         phone,
-        battery_node,
         slam_launch,
         robot_state_publisher,
         static_tf_cam_to_base,

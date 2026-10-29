@@ -1,20 +1,15 @@
 """hardware_test: short one-shot hardware demo, then exits.
 
 Prints battery levels, pulses both motors, exercises the ball loader/launcher
-and flashes the LEDs. Stop the motor node before running (same I2C bus).
+and flashes the LEDs. Stop hardware_node before running (same I2C bus).
 """
 
 import time
 
-import board
-import busio
 import rclpy
-from adafruit_ina3221 import INA3221
-from adafruit_motor import servo
-from adafruit_pca9685 import PCA9685
 from rclpy.node import Node
 
-from loone.battery import battery_voltage
+from loone.hardware.hardwareController import HardwareController
 
 
 class HardwareTest(Node):
@@ -23,81 +18,39 @@ class HardwareTest(Node):
     def __init__(self) -> None:
         super().__init__('hardware_test')
 
-    def load(self, launcher, carriage) -> None:
-        """Run the launcher and carriage in sequence to load a ball."""
-        self.get_logger().info('Load ball, then press Enter to run the loader.')
-        carriage.angle = 45
-        time.sleep(1)
-        input('')
-        try:
-            launcher.throttle = -0.5
-            time.sleep(1)
-            carriage.throttle = 0.5
-            time.sleep(1)
-        finally:
-            launcher.throttle = 0.0
-            carriage.throttle = 0.0
-
-    def launch(self, launcher, carriage) -> None:
-        """Run the launcher and carriage to fire a loaded ball."""
-        self.get_logger().info('Press Enter to launch the ball.')
-        input('')
-        try:
-            launcher.throttle = 0.5
-            carriage.throttle = -0.5
-            time.sleep(4)
-        finally:
-            launcher.throttle = 0.0
-            carriage.throttle = 0.0
-
     def run(self) -> None:
-        i2c = busio.I2C(board.SCL, board.SDA)
-        pca = PCA9685(i2c, address=64)
+        # speed is the throttle forward() uses for the motor pulse below.
+        hardware = HardwareController(
+            freq=50, propellor_kwargs={'speed': 0.12}, logger=self.get_logger())
         try:
-            pca.frequency = 50
-            left = servo.Servo(pca.channels[0], min_pulse=1120, max_pulse=1880)
-            right = servo.Servo(pca.channels[1], min_pulse=1120, max_pulse=1880)
-            carriage = servo.ContinuousServo(
-                pca.channels[2], min_pulse=1220, max_pulse=1820)
-            launcher = servo.ContinuousServo(
-                pca.channels[3], min_pulse=1120, max_pulse=1880)
-            red, green = pca.channels[4], pca.channels[5]
-            left.fraction = right.fraction = 0.5
-            carriage.throttle = 0.0
-            launcher.throttle = 0.0
-            ina = INA3221(i2c, address=65, enable=[0, 1, 2])
+            if hardware.battery is None:
+                self.get_logger().warning("No INA3221, skipping battery levels.")
+            else:
+                for state in hardware.battery.states():
+                    self.get_logger().info(
+                        f"{state.location} battery: {round(state.percentage * 100)}% "
+                        f"({state.voltage:.1f} V)")
 
-            try:
-                for name, channel, low, high in (
-                    ("Left", 0, 15.0, 21.0),
-                    ("Right", 1, 15.0, 21.0),
-                    ("Main", 2, 13.2, 16.8),
-                ):
-                    voltage = battery_voltage(ina[channel])
-                    percent = max(0, min(100, round((voltage - low) / (high - low) * 100)))
-                    self.get_logger().info(f"{name} battery: {percent}% ({voltage:.1f} V)")
+            input('Load ball, then press Enter to run the loader.')
+            hardware.ball_launcher.load()
 
-                self.load(launcher, carriage)
-                self.get_logger().info("Motors...")
-                left.fraction = right.fraction = 0.56
-                time.sleep(0.5)
-                left.fraction = right.fraction = 0.5
+            self.get_logger().info("Motors...")
+            hardware.propellors.forward()
+            time.sleep(0.5)
+            hardware.propellors.stop()
 
-                self.launch(launcher, carriage)
-                self.load(launcher, carriage)
+            input('Press Enter to launch the ball.')
+            hardware.ball_launcher.launch()
+            input('Load ball, then press Enter to run the loader.')
+            hardware.ball_launcher.load()
 
-                self.get_logger().info("Party mode!")
-                for _ in range(2):
-                    for r, g in ((0xFFFF, 10), (0xFFFF, 0xFFFF), (0, 0xFFFF), (0, 0)):
-                        red.duty_cycle, green.duty_cycle = r, g
-                        time.sleep(0.15)
-            finally:
-                left.fraction = right.fraction = 0.5
-                launcher.throttle = 0.0
-                carriage.throttle = 0.0
-                red.duty_cycle = green.duty_cycle = 0
+            self.get_logger().info("Party mode!")
+            for _ in range(2):
+                for red, green in ((True, False), (True, True), (False, True), (False, False)):
+                    hardware.set_led(red, green)
+                    time.sleep(0.15)
         finally:
-            pca.deinit()
+            hardware.shutdown()
 
 
 def main(args=None) -> None:
