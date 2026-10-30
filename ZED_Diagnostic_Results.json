@@ -1,0 +1,450 @@
+{
+    "AI Models": {
+        "info": [
+            "MULTI CLASS DETECTION is not optimized",
+            "MULTI CLASS MEDIUM DETECTION is not optimized",
+            "MULTI CLASS ACCURATE DETECTION is not optimized",
+            "HUMAN BODY FAST DETECTION is not optimized",
+            "HUMAN BODY MEDIUM DETECTION is not optimized",
+            "HUMAN BODY ACCURATE DETECTION is not optimized",
+            "HUMAN BODY 38 FAST DETECTION is not optimized",
+            "HUMAN BODY 38 MEDIUM DETECTION is not optimized",
+            "HUMAN BODY 38 ACCURATE DETECTION is not optimized",
+            "PERSON HEAD DETECTION is not optimized",
+            "PERSON HEAD ACCURATE DETECTION is not optimized",
+            "REID ASSOCIATION is not optimized",
+            "NEURAL PLUS DEPTH is not optimized"
+        ],
+        "valid": [
+            "NEURAL LIGHT DEPTH is optimized",
+            "NEURAL DEPTH is optimized"
+        ]
+    },
+    "CUDA Operations": {
+        "cudaDeviceCount": 1,
+        "cudaDriverVersion": 12060,
+        "cudaDriverVersionString": "12.6",
+        "cudaGetDeviceCountResult": 0,
+        "cudaRuntimeLoaded": true,
+        "cudaRuntimeVersion": 12060,
+        "cudaRuntimeVersionString": "12.6",
+        "cudaTestVersion": "1.0",
+        "gpuTests": [
+            {
+                "clockRateMHz": 1020,
+                "computeCapability": "8.7",
+                "computeCapabilityMajor": 8,
+                "computeCapabilityMinor": 7,
+                "freeResult": 0,
+                "freeSuccess": true,
+                "gpuId": 0,
+                "gpuName": "Orin",
+                "mallocResult": 0,
+                "mallocSuccess": true,
+                "memcpyD2HResult": 0,
+                "memcpyD2HSuccess": true,
+                "memcpyH2DResult": 0,
+                "memcpyH2DSuccess": true,
+                "memoryBusWidthBits": 128,
+                "memoryClockRateMHz": 1020,
+                "memsetResult": 0,
+                "memsetSuccess": true,
+                "multiProcessorCount": 8,
+                "pciBusId": 0,
+                "pciDeviceId": 0,
+                "pciDomainId": 0,
+                "setDeviceResult": 0,
+                "testElements": 1048576,
+                "testPassed": true,
+                "testSizeBytes": 4194304,
+                "totalGlobalMemMB": 7606,
+                "validationPassed": true
+            }
+        ],
+        "testSizeMB": 1,
+        "valid": [
+            "<b>GPU 0 (Orin):</b> CUDA operations working correctly"
+        ]
+    },
+    "GMSL DRIVER": {
+        "GMSL driver": "ii  stereolabs-zedlink-mono                           1.4.2-SL-MAX9296-L4T36.5.0                       arm64        NVIDIA Kernel DTB Modified Package by Stereolabs\n"
+    },
+    "Graphics Card": {
+        "deviceCount": 1,
+        "deviceDriverVersion": 12060,
+        "devices": [
+            {
+                "arch": "Ampere",
+                "computeCapability": "8.7",
+                "cores": 1024,
+                "name": "Orin",
+                "totalMemoryBytes": "7976427520",
+                "totalMemoryMB": 7606.9140625
+            }
+        ],
+        "glx_info": "",
+        "initResult": 0,
+        "valid": [
+            "<b>Graphics card: </b> Orin"
+        ]
+    },
+    "Log Kernel Trace (for ZED X)": {
+        "dmesg": {
+            "DMESG [DTS] LOG ": [
+            ],
+            "DMESG [MAX9x] LOG": [
+                "[   12.753363] sl_max9296: module verification failed: signature and/or required key missing - tainting kernel",
+                "[   12.754164] sl_max9296 9-0048: Driver Version : v1.4.2",
+                "[   12.754238] sl_max9296 9-0048: sl_max9296_parse_dt: 'sync_mode' not found, assuming master mode",
+                "[   12.755167] sl_max9296 9-0048: write_reg_Dser: addr = 0x10, val = 0x80",
+                "[   12.861878] sl_max9296 9-0048: write_reg_Dser: addr = 0x10, val = 0x21",
+                "[   12.861926] sl_max9296: probe of 9-0048 failed with error -1",
+                "[   12.861996] sl_max9296 10-0048: Driver Version : v1.4.2",
+                "[   12.862744] sl_max9296 10-0048: write_reg_Dser: addr = 0x10, val = 0x80",
+                "[   14.033771] sl_max9296 10-0048: sl_max9296_get_cam: zedx camera identified via eeprom",
+                "[   14.033782] sl_max9296 10-0048: sl_max9296_probe: Camera connected to GMSL port 0",
+                "[   14.033785] sl_max9296 10-0048: sl_max9296_probe: zedx camera connected to this port",
+                "[   14.205396] sl_max9296 10-0048: sl_max9296_probe: camera pipeline operational",
+                "[   15.158504] sl_max9296 10-0048: No camera found on gmsl 1",
+                "[   15.265390] sl_max9296 10-0048: sl_max9296_probe: success ",
+                "[   15.276542] sl_max9295 10-0062: Driver Version : v1.4.2",
+                "[   15.493396] sl_max9295 10-0062: probe_serializer: Serializer pipeline operational",
+                "[   15.494252] sl_max9295 10-0062: probe_serializer: Serializer for zedx detect success",
+                "[  172.313620] sl_max9295 10-0062: ZED-X serializer successfully removed",
+                "[  172.361523] sl_max9296 10-0048: sl_max9296_remove: success",
+                "[  172.386102] sl_max9296 9-0048: Driver Version : v1.4.2",
+                "[  172.386168] sl_max9296 9-0048: sl_max9296_parse_dt: 'sync_mode' not found, assuming master mode",
+                "[  172.386705] sl_max9296 9-0048: write_reg_Dser: addr = 0x10, val = 0x80",
+                "[  172.491311] sl_max9296 9-0048: write_reg_Dser: addr = 0x10, val = 0x21",
+                "[  172.491345] sl_max9296: probe of 9-0048 failed with error -1",
+                "[  172.491395] sl_max9296 10-0048: Driver Version : v1.4.2",
+                "[  172.491831] sl_max9296 10-0048: write_reg_Dser: addr = 0x10, val = 0x80",
+                "[  173.663228] sl_max9296 10-0048: sl_max9296_get_cam: zedx camera identified via eeprom",
+                "[  173.663236] sl_max9296 10-0048: sl_max9296_probe: Camera connected to GMSL port 0",
+                "[  173.663238] sl_max9296 10-0048: sl_max9296_probe: zedx camera connected to this port",
+                "[  173.830856] sl_max9296 10-0048: sl_max9296_probe: camera pipeline operational",
+                "[  174.755193] sl_max9296 10-0048: No camera found on gmsl 1",
+                "[  174.862835] sl_max9296 10-0048: sl_max9296_probe: success ",
+                "[  174.868504] sl_max9295 10-0062: Driver Version : v1.4.2",
+                "[  175.082838] sl_max9295 10-0062: probe_serializer: Serializer pipeline operational",
+                "[  175.083625] sl_max9295 10-0062: probe_serializer: Serializer for zedx detect success"
+            ],
+            "DMESG [PCA] LOG ": [
+            ],
+            "DMESG [ZEDX] LOG": [
+                "[   14.033771] sl_max9296 10-0048: sl_max9296_get_cam: zedx camera identified via eeprom",
+                "[   14.033785] sl_max9296 10-0048: sl_max9296_probe: zedx camera connected to this port",
+                "[   15.494252] sl_max9295 10-0062: probe_serializer: Serializer for zedx detect success",
+                "[   15.517128] zedx 10-0020: Driver Version : v1.4.2",
+                "[   15.517491] zedx 10-0020: tegracam sensor driver:video2_v2.0.6",
+                "[   15.841425] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0020 bound",
+                "[   15.842834] zedx 10-0020: ZED-X sensor initialisation done",
+                "[   15.842838] zedx 10-0020: zedx_probe: Serial Number : 41775244",
+                "[   15.842866] zedx 10-0020: zedx_probe: success",
+                "[   15.843345] zedx 10-0028: Driver Version : v1.4.2",
+                "[   15.843479] zedx 10-0028: tegracam sensor driver:video0_v2.0.6",
+                "[   16.165385] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0028 bound",
+                "[   16.166239] zedx 10-0028: ZED-X sensor initialisation done",
+                "[   16.166245] zedx 10-0028: zedx_probe: Serial Number : 41775244",
+                "[   16.166286] zedx 10-0028: zedx_probe: success",
+                "[  172.217841] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0028 unbind",
+                "[  172.218138] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0020 unbind",
+                "[  173.663228] sl_max9296 10-0048: sl_max9296_get_cam: zedx camera identified via eeprom",
+                "[  173.663238] sl_max9296 10-0048: sl_max9296_probe: zedx camera connected to this port",
+                "[  175.083625] sl_max9295 10-0062: probe_serializer: Serializer for zedx detect success",
+                "[  175.096206] zedx 10-0020: Driver Version : v1.4.2",
+                "[  175.096338] zedx 10-0020: tegracam sensor driver:video2_v2.0.6",
+                "[  175.422887] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0020 bound",
+                "[  175.423392] zedx 10-0020: ZED-X sensor initialisation done",
+                "[  175.423396] zedx 10-0020: zedx_probe: Serial Number : 41775244",
+                "[  175.423420] zedx 10-0020: zedx_probe: success",
+                "[  175.423805] zedx 10-0028: Driver Version : v1.4.2",
+                "[  175.423941] zedx 10-0028: tegracam sensor driver:video0_v2.0.6",
+                "[  175.746757] tegra-camrtc-capture-vi tegra-capture-vi: subdev zedx 10-0028 bound",
+                "[  175.747107] zedx 10-0028: ZED-X sensor initialisation done",
+                "[  175.747110] zedx 10-0028: zedx_probe: Serial Number : 41775244",
+                "[  175.747135] zedx 10-0028: zedx_probe: success"
+            ],
+            "DTB list SLabs": [
+                "board.py",
+                "extlinux.py",
+                "fio.py",
+                "Headers",
+                "Jetson",
+                "Linux",
+                "__pycache__",
+                "Utils",
+                "zlconfig"
+            ],
+            "DTB list original": [
+                "/boot/dtb/kernel_tegra234-p3768-0000+p3767-0005-nv-super.dtb"
+            ],
+            "Dpkg list Stereolabs": [
+                "ii  stereolabs-zedlink-mono                           1.4.2-SL-MAX9296-L4T36.5.0                       arm64        NVIDIA Kernel DTB Modified Package by Stereolabs"
+            ],
+            "Dpkg list zed": [
+            ],
+            "Driver list": {
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/max9295/sl_max9295.ko": "exists",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/max9296/max9296.ko": "not found",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/max9296/sl_max9296.ko": "exists",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/max96712/max96712.ko": "not found",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/max96712/sl_max96712.ko": "not found",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/zedone4k/sl_zedxone_uhd.ko": "exists",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/zedx/max96712.ko": "not found",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/zedx/sl_zedx.ko": "exists",
+                "/usr/lib/modules/5.15.185-tegra/kernel/drivers/stereolabs/zedxpro/sl_zedxpro.ko": "not found"
+            },
+            "EXTlinux file": [
+                "TIMEOUT 30",
+                "DEFAULT Stereolabs",
+                "MENU TITLE L4T boot options",
+                "LABEL primary",
+                "      MENU LABEL primary kernel",
+                "      LINUX /boot/Image",
+                "      INITRD /boot/initrd",
+                "      APPEND ${cbootargs} root=PARTUUID=66b6297a-4899-4a8e-a57b-009ab3ed8d44 rw rootwait rootfstype=ext4 mminit_loglevel=4 console=ttyTCU0,115200 firmware_class.path=/etc/firmware fbcon=map:0 video=efifb:off console=tty0 efi=runtime pci=pcie_bus_perf nvme.use_threaded_interrupts=1 nv-auto-config ",
+                "# When testing a custom kernel, it is recommended that you create a backup of",
+                "# the original kernel and add a new entry to this file so that the device can",
+                "# fallback to the original kernel. To do this:",
+                "#",
+                "# 1, Make a backup of the original kernel",
+                "#      sudo cp /boot/Image /boot/Image.backup",
+                "#",
+                "# 2, Copy your custom kernel into /boot/Image",
+                "#",
+                "# 3, Uncomment below menu setting lines for the original kernel",
+                "#",
+                "# 4, Reboot",
+                "# LABEL backup",
+                "#    MENU LABEL backup kernel",
+                "#    LINUX /boot/Image.backup",
+                "#    INITRD /boot/initrd",
+                "#    APPEND ${cbootargs}",
+                "LABEL Stereolabs",
+                "\tMENU LABEL Stereolabs kernel",
+                "\tLINUX /boot/Image",
+                "\tFDT /boot/dtb/kernel_tegra234-p3768-0000+p3767-0005-nv-super.dtb",
+                "\tINITRD /boot/initrd",
+                "\tAPPEND ${cbootargs} root=PARTUUID=66b6297a-4899-4a8e-a57b-009ab3ed8d44 rw rootwait rootfstype=ext4 mminit_loglevel=4 console=ttyTCU0,115200 firmware_class.path=/etc/firmware fbcon=map:0 video=efifb:off console=tty0 efi=runtime pci=pcie_bus_perf nvme.use_threaded_interrupts=1 nv-auto-config",
+                "\tOVERLAYS /boot/tegra234-p3768-camera-zedlink-mono-sl-overlay.dtbo"
+            ],
+            "I2C Trace list": {
+                "I2C Trace /dev/i2C-0": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "50: UU -- -- -- -- -- -- UU -- -- -- -- -- -- -- -- ",
+                    "60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ],
+                "I2C Trace /dev/i2C-1": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "20: -- -- -- -- -- UU -- -- -- -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "40: UU -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ],
+                "I2C Trace /dev/i2C-10": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- 19 -- -- -- -- -- -- ",
+                    "20: UU -- -- -- -- -- -- -- UU -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- UU 3c -- -- -- ",
+                    "40: -- -- -- -- -- -- -- -- UU 49 -- -- -- -- -- -- ",
+                    "50: -- -- -- -- 54 55 -- -- -- -- -- -- -- -- -- -- ",
+                    "60: -- -- UU -- -- -- -- -- -- 69 -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ],
+                "I2C Trace /dev/i2C-11": [
+                    "Error: Bus doesn't support detection commands"
+                ],
+                "I2C Trace /dev/i2C-2": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- 19 -- -- -- -- -- -- ",
+                    "20: UU -- -- -- -- -- -- -- UU -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- UU 3c -- -- -- ",
+                    "40: -- -- -- -- -- -- -- -- UU 49 -- -- -- -- -- -- ",
+                    "50: -- -- -- -- 54 55 -- -- -- -- -- -- -- -- -- -- ",
+                    "60: -- -- UU -- -- -- -- -- -- 69 -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ],
+                "I2C Trace /dev/i2C-7": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "40: 40 41 -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ],
+                "I2C Trace /dev/i2C-9": [
+                    "     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f",
+                    "00:                         -- -- -- -- -- -- -- -- ",
+                    "10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- ",
+                    "70: -- -- -- -- -- -- -- --                         "
+                ]
+            },
+            "Jetpack": [
+                "# R36 (release), REVISION: 5.0, GCID: 43688277, BOARD: generic, EABI: aarch64, DATE: Fri Jan 16 03:50:45 UTC 2026",
+                "# KERNEL_VARIANT: oot",
+                "TARGET_USERSPACE_LIB_DIR=nvidia",
+                "TARGET_USERSPACE_LIB_DIR_PATH=usr/lib/aarch64-linux-gnu/nvidia"
+            ],
+            "Linux_uname": [
+                "Linux ubuntu 5.15.185-tegra #1 SMP PREEMPT Thu Jan 15 19:24:38 PST 2026 aarch64 aarch64 aarch64 GNU/Linux"
+            ],
+            "ZED SDK Version": {
+                "Diag": "5.4.0",
+                "RT": "5.4.0"
+            },
+            "ZEDX Daemon Status LS": [
+                "● zed_x_daemon.service - ZED-X Daemon service",
+                "     Loaded: loaded (/etc/systemd/system/zed_x_daemon.service; enabled; vendor preset: enabled)",
+                "     Active: active (running) since Thu 2026-10-29 18:55:26 EDT; 21min ago",
+                "   Main PID: 2815 (ZEDX_Daemon)",
+                "      Tasks: 5 (limit: 8793)",
+                "     Memory: 2.6M",
+                "        CPU: 787ms",
+                "     CGroup: /system.slice/zed_x_daemon.service",
+                "             └─2815 /usr/sbin/ZEDX_Daemon",
+                "Oct 29 18:55:26 ubuntu systemd[1]: Started ZED-X Daemon service."
+            ],
+            "ZEDX Driver State": [
+                "sl_zedxone_uhd         40960  0",
+                "sl_zedx                28672  2",
+                "sl_zedxhdr             24576  0",
+                "sl_max9295             16384  3 sl_zedxhdr,sl_zedxone_uhd,sl_zedx",
+                "sl_max9296             36864  4 sl_zedxhdr,sl_zedxone_uhd,sl_max9295,sl_zedx",
+                "tegra_camera          221184  14 nvhost_isp5,nvhost_nvcsi_t194,sl_zedxhdr,sl_zedxone_uhd,nvhost_vi5,sl_zedx",
+                "videodev              249856  9 v4l2_async,sl_zedxhdr,videobuf2_v4l2,tegra_camera,sl_zedxone_uhd,videobuf2_common,sl_zedx"
+            ],
+            "i2C Trace": [
+                "i2c-0\ti2c       \t3160000.i2c                     \tI2C adapter",
+                "i2c-1\ti2c       \tc240000.i2c                     \tI2C adapter",
+                "i2c-2\ti2c       \t3180000.i2c                     \tI2C adapter",
+                "i2c-4\ti2c       \tTegra BPMP I2C adapter          \tI2C adapter",
+                "i2c-5\ti2c       \t31b0000.i2c                     \tI2C adapter",
+                "i2c-7\ti2c       \tc250000.i2c                     \tI2C adapter",
+                "i2c-9\ti2c       \ti2c-2-mux (chan_id 1)           \tI2C adapter",
+                "i2c-10\ti2c       \ti2c-2-mux (chan_id 0)           \tI2C adapter",
+                "i2c-11\ti2c       \tNVIDIA SOC i2c adapter 0        \tI2C adapter"
+            ]
+        }
+    },
+    "Processor": {
+        "L4T version": "36.5.0",
+        "OS": "Ubuntu 22.04.5 LTS ",
+        "avxSupported": false,
+        "coreCount": "6",
+        "cpu": " ARMv8 Processor rev 1 (v8l)",
+        "datetime": "2026-10-29 07:15:47 PM",
+        "hyperThreading": "0",
+        "motherboard": "Jetson, NVIDIA",
+        "platform": "NVIDIA Jetson (L4T)",
+        "ramCapacity": "7.976428",
+        "ramUsage": "",
+        "ramUsed": "3.760316",
+        "threadCount": "6",
+        "valid": [
+            "<b>Processor: </b>  ARMv8 Processor rev 1 (v8l)",
+            "<b>Motherboard: </b> Jetson, NVIDIA"
+        ]
+    },
+    "USB Camera": {
+        "CorruptedFirmware": [
+        ],
+        "GMSL driver": [
+        ],
+        "GMSLList": [
+            {
+                "Serial": "41775244",
+                "Sub Model": "ZED-XG 120mm",
+                "id": 0,
+                "path": "/dev/i2c-10",
+                "state": "Not Available"
+            }
+        ],
+        "InternalDevicesCount (GMSL)": [
+        ],
+        "InternalDevicesCount (USB)": [
+        ],
+        "Serial Number": [
+        ],
+        "USBList": [
+            {
+                "USB_path": "/1",
+                "idProduct": "0x0489",
+                "idVendor": "0x0bda"
+            },
+            {
+                "USB_path": "/3",
+                "idProduct": "0x3549",
+                "idVendor": "0x13d3"
+            },
+            {
+                "USB_path": "/2",
+                "idProduct": "0x5489",
+                "idVendor": "0x0bda"
+            }
+        ],
+        "ZEDCount": [
+        ],
+        "ZEDs": [
+        ],
+        "camera": [
+        ],
+        "resolutions": [
+        ],
+        "sensors": [
+        ],
+        "valid": [
+            "<b>Camera: </b>ZED X"
+        ]
+    },
+    "ZED SDK": {
+        "CUDA Toolkit version": "V12.6.68 -->located in /usr/local/cuda-12.6/bin/nvcc",
+        "CUDA loading": false,
+        "GPU Driver Version": "Driver Version                            : 540.5.0",
+        "GPU Performance": "    Performance State                     : N/A",
+        "ZED SDK Version (Diag)": "5.4.0",
+        "ZED SDK Version (RT)": "5.4.0",
+        "ai": {
+            "checkAI": true,
+            "cudaVersion": 12060,
+            "tensorVersion": 100300
+        },
+        "binFiles": [
+            "libsl_ai.so",
+            "libsl_zed.so"
+        ],
+        "resourcesFiles": [
+            "neural_depth_5.3.model",
+            "neural_depth_light_5.2.model",
+            "neural_depth_light_5.3.model",
+            "positional_tracking_2.2.model"
+        ],
+        "resourcesFilesExpected": [
+            "objects_performance_3.2"
+        ],
+        "valid": [
+            "<b>ZED SDK version:</b> 5.4.0",
+            "<b>CUDA version:</b> V12.6.68"
+        ]
+    }
+}

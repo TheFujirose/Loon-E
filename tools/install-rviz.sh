@@ -9,7 +9,7 @@
 # Docs: https://docs.stereolabs.com/docs/integrations/ros-2/data-display-with-r-viz-2
 #
 # Usage:
-#   ./install-rviz.sh [install|remove]   (default: install)
+#   tools/install-rviz.sh [install|remove]   (default: install)
 set -euo pipefail
 
 REPO_URL="https://github.com/stereolabs/zed-ros2-examples.git"
@@ -17,7 +17,7 @@ REPO_REF="v5.4.0"
 PACKAGES=(rviz-plugin-zed-od zed_display_rviz2)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WS_ROOT="$SCRIPT_DIR"
+WS_ROOT="$(dirname "$SCRIPT_DIR")"
 SRC_DIR="$WS_ROOT/src"
 
 ACTION="${1:-install}"

@@ -316,7 +316,9 @@ def main(args=None) -> None:
     finally:
         node.shutdown()
         node.destroy_node()
-        rclpy.shutdown()
+        # The SIGINT handler may have already shut down the context.
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

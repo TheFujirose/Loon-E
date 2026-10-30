@@ -120,5 +120,5 @@ echo ""
 echo -e "${CYAN}Summary${NC}: ${GREEN}${pass_count} passed${NC}, ${RED}${fail_count} failed${NC}"
 
 if [ "$fail_count" -ne 0 ]; then
-    echo -e "${YELLOW}Some checks failed. Try running ./reset.sh or sudo ZED_Diagnostic --dmesg${NC}"
+    echo -e "${YELLOW}Some checks failed. Try running tools/reset.sh, or tools/CAMERA_DEBUG.py for a full camera check${NC}"
 fi

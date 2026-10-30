@@ -5,6 +5,7 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WS_ROOT="$(dirname "$SCRIPT_DIR")"
 
 echo "Running mtu.sh"
 "$SCRIPT_DIR/mtu.sh"
@@ -27,12 +28,12 @@ else
 fi
 
 if [ "$failed" -ne 0 ]; then
-    echo -e "${RED}Daemon check failed. Try running ./reset.sh first.${NC}"
+    echo -e "${RED}Daemon check failed. Try running tools/reset.sh first.${NC}"
     exit 1
 fi
 
 echo "Sourcing install/setup.sh"
-source "$SCRIPT_DIR/install/setup.sh"
+source "$WS_ROOT/install/setup.sh"
 
 echo "Launching SLAM"
 ros2 launch loone slam_launch.py

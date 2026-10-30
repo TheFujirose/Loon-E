@@ -38,10 +38,10 @@ The pulse ranges, PWM frequency and `pca_clock` are set in
   ignores throttle.
 - Bidirectional by default.
 
-## Tool 1: `tester.py`, raw ESC probe
+## Tool 1: `tools/tester.py`, raw ESC probe
 
 ```bash
-python3 tester.py [channel]    # default channel 3 (launcher)
+python3 tools/tester.py [channel]    # default channel 3 (launcher)
 ```
 
 It sends 1500 µs for 3 s (arming), then steps through
@@ -64,7 +64,7 @@ Use it to answer one question: **is the problem hardware or code?** It bypasses
 > spins / doesn't-spin check, but don't use it to judge exact stop or full
 > throttle.
 
-## Tool 2: `pca_clock_cal.py`, board clock calibration
+## Tool 2: `tools/pca_clock_cal.py`, board clock calibration
 
 The PCA9685's built-in clock is nominally 25 MHz, but it varies by a few percent
 from board to board, and **every pulse width scales with that error**. Each 1% of
@@ -73,7 +73,7 @@ error moves the 1500 µs stop signal by about 15 µs, so anything more than abou
 motors creeping when they should be stopped, or less than full throttle.
 
 ```bash
-python3 pca_clock_cal.py [channel]    # default channel 7
+python3 tools/pca_clock_cal.py [channel]    # default channel 7
 ```
 
 1. Make sure **nothing is plugged into the channel** (default ch7 is free).
