@@ -1,7 +1,7 @@
 """hardware_node: ROS interface to the boat's hardware.
 
 Replaces motor.py. All bus / GPIO access goes through HardwareController
-(loone/hardware/hardwareController.py); this node only turns topics into
+(loone/hardware/hardware_controller.py); this node only turns topics into
 controller calls and controller state back into topics:
 
     HardwareController
@@ -32,7 +32,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import BatteryState
 from std_msgs.msg import Float32MultiArray, Int8, Int8MultiArray, ColorRGBA
 
-from loone.hardware.hardwareController import HardwareController
+from loone.hardware.hardware_controller import HardwareController
 
 
 class HardwareNode(Node):

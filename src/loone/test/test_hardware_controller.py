@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 
-MODULE = 'loone.hardware.hardwareController'
+MODULE = 'loone.hardware.hardware_controller'
 
 
 # ── Shared fixture ─────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ def hardware_mocks():
 
 @pytest.fixture
 def hardware(hardware_mocks):
-    from loone.hardware.hardwareController import HardwareController
+    from loone.hardware.hardware_controller import HardwareController
 
     return HardwareController(logger=MagicMock())
 
@@ -56,14 +56,14 @@ class TestInitValidation:
     """Tests for frequency and pulse-range validation during initialisation."""
 
     def test_freq_too_low_raises(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         # freq=10 is below the minimum of 24 Hz -> should raise ValueError
         with pytest.raises(ValueError):
             HardwareController(freq=10, logger=MagicMock())
 
     def test_freq_too_high_raises(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         with pytest.raises(ValueError):
             HardwareController(freq=9999, logger=MagicMock())
@@ -88,13 +88,13 @@ class TestInitValidation:
         hardware._validate_pulse_range(1120, 1880, 'prop')
 
     def test_invalid_prop_pulse_range_raises(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         with pytest.raises(ValueError):
             HardwareController(prop_min=1500, prop_max=1500, logger=MagicMock())
 
     def test_invalid_launcher_pulse_range_raises(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         with pytest.raises(ValueError):
             HardwareController(launcher_min=1000, launcher_max=2600, logger=MagicMock())
@@ -105,7 +105,7 @@ class TestInitValidation:
         with ExitStack() as stack:
             mocks = _patch_hardware(
                 stack, ina_side_effect=ValueError('No I2C device at address: 0x41'))
-            from loone.hardware.hardwareController import HardwareController
+            from loone.hardware.hardware_controller import HardwareController
 
             hardware = HardwareController(logger=MagicMock())
 
@@ -119,7 +119,7 @@ class TestInitValidation:
         # so its failure must still be fatal.
         with ExitStack() as stack:
             _patch_hardware(stack, pca_side_effect=ValueError('No I2C device at address: 0x40'))
-            from loone.hardware.hardwareController import HardwareController
+            from loone.hardware.hardware_controller import HardwareController
 
             with pytest.raises(ValueError):
                 HardwareController(logger=MagicMock())
@@ -131,7 +131,7 @@ class TestConstruction:
     """The controller wires each PCA9685 channel to the right actuator."""
 
     def test_sets_pca_frequency(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         hardware = HardwareController(freq=60, logger=MagicMock())
 
@@ -157,7 +157,7 @@ class TestConstruction:
         assert hardware.battery.ina is hardware.ina
 
     def test_passes_controller_kwargs_through(self, hardware_mocks):
-        from loone.hardware.hardwareController import HardwareController
+        from loone.hardware.hardware_controller import HardwareController
 
         hardware = HardwareController(
             propellor_kwargs={'factor': 0.3, 'diff': 0.1},

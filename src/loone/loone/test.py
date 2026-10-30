@@ -9,7 +9,7 @@ import time
 import rclpy
 from rclpy.node import Node
 
-from loone.hardware.hardwareController import HardwareController
+from loone.hardware.hardware_controller import HardwareController
 
 
 class HardwareTest(Node):
