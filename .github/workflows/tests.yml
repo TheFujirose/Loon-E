@@ -33,6 +33,8 @@ jobs:
         run: |
           source /opt/ros/humble/setup.bash
           sudo apt-get update
+          # Runner image ships libunwind-14-dev (LLVM), which conflicts with libunwind-dev needed by glog/nav2
+          sudo apt-get remove -y libunwind-14-dev || true
           sudo apt-get install -y \
             ros-humble-navigation2 \
             ros-humble-nav2-bringup \
