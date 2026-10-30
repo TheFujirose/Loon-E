@@ -27,9 +27,7 @@ def generate_launch_description():
 
     loone_share = get_package_share_directory('loone')
 
-    # Node parameters. Nothing previously passed this file to task/motor/
-    # path_planning, so every tuned value in it was ignored and the in-code
-    # defaults were used instead.
+    # Node parameters.
     config = os.path.join(loone_share, 'config', 'config.yaml')
 
     # Robot description lives in the le1000_urdf_t4 package (src/loone_urdf --
@@ -53,7 +51,7 @@ def generate_launch_description():
     )
 
      # Publishes base_link, gps_link and the prop/rudder frames from the URDF.
-    # gps_link is the frame phone.py stamps its NavSatFix messages with, and
+    # gps_link is the frame GPS NavSatFix messages are stamped with, and
     # navsat_transform_node needs it in TF to remove the antenna offset from the
     # robot's origin -- without this node that lookup fails on every fix.
     # Only the fixed joints (gps_link) actually reach TF: nothing here publishes
@@ -95,7 +93,7 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false',
                                     description='Use /clock simulated time. Keep false on the real boat.'),
         DeclareLaunchArgument('sim', default_value='false',
-                                    description='Simulation mode: swap busio_node for sim_state_echo '
+                                    description='Simulation mode: skip hardware_node '
                                                 '(Isaac Sim drives the actuators).'),
         #slam_launch,
         hardware_test,

@@ -53,17 +53,8 @@ def generate_launch_description():
             }.items()
         )
 
-    phone = Node(
-            package='loone',
-            executable='phone',
-            name='phone',
-            output='screen',
-            parameters=[config],
-            condition=UnlessCondition(sim),
-        )
-
     # Publishes base_link, gps_link and the prop/rudder frames from the URDF.
-    # gps_link is the frame phone.py stamps its NavSatFix messages with, and
+    # gps_link is the frame GPS NavSatFix messages are stamped with, and
     # navsat_transform_node needs it in TF to remove the antenna offset from the
     # robot's origin -- without this node that lookup fails on every fix.
     # Only the fixed joints (gps_link) actually reach TF: nothing here publishes
@@ -112,20 +103,8 @@ def generate_launch_description():
         ],
     )
 
-    # The name= values must match the top-level keys in config.yaml (/task,
-    # /hardware_node, /path_planning) for the parameters to be applied.
-    # this is commented out because we can just call the node,
-    # we want to send data to the GUI without running task.py,
-    # it's not a blocking node or anything, it's just better to run on separate terminal
-    # so we don't shut down the entire system on tests and hot fixing.
-    # task = Node(
-    #     package='loone',
-    #     executable='task',
-    #     name='task',
-    #     output='screen',
-    #     parameters=[config, {'use_sim_time': use_sim_time}],
-    # )
-
+    # The name= value must match the top-level key in config.yaml (/hardware_node)
+    # for the parameters to be applied.
     hardware_node = Node(
         package='loone',
         executable='hardware_node',
@@ -146,10 +125,9 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='false',
                                     description='Use /clock simulated time. Keep false on the real boat.'),
         DeclareLaunchArgument('sim', default_value='false',
-                                    description='Simulation mode: swap busio_node for sim_state_echo '
+                                    description='Simulation mode: skip hardware_node '
                                                 '(Isaac Sim drives the actuators).'),
         hardware_node,
-        phone,
         slam_launch,
         robot_state_publisher,
         static_tf_cam_to_base,

@@ -64,7 +64,7 @@ Next steps:
   source install/setup.bash
 
   # Start your real stack first (this is what wires up the custom ONNX model):
-  ros2 launch loone bringup.launch.py   # or slam_launch.py
+  ros2 launch loone launch.py   # or slam_launch.py
 
   # Then, in another shell, open RViz against it. start_zed_node:=False is
   # required -- otherwise this launches a second, unconfigured zed_camera.launch.py

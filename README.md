@@ -26,7 +26,7 @@ Ensure you have set up your environment following [instructions](./wiki/setup/EN
 
 For building the workspace with Windows see the below note: Building with Windows.
 
-Regardless of Linux or macOs distrubution, navigate to the project root `PROJECT-NAME/` and run `colcon build`. It may be needed to use the option `--symlink-install` as some build types do not support `devel` spaces.
+Regardless of Linux or macOs distrubution, navigate to the project root `Loon-E/` and run `colcon build`. It may be needed to use the option `--symlink-install` as some build types do not support `devel` spaces.
 
 For more information on `catkin`'s `devel` space read [this documentation](https://catkin-tools.readthedocs.io/en/latest/advanced/linked_develspace.html).
 
@@ -37,33 +37,46 @@ colcon build --symlink-install
 You can test it with the following command:
 
 ```bash
-colon test --symlink-install
+colcon test
 ```
 ### Project Structure
 
 ```text
-Ros2-Examples/
-├── build/                       # Colcon intermediate files
-├── install/                     # Colcon package installation
-├── log/                         # Colcon Logging information
+Loon-E/
+├── .github/workflows/           # CI (Loone Tests)
+├── build/                       # Colcon intermediate files (not tracked)
+├── install/                     # Colcon package installation (not tracked)
+├── log/                         # Colcon logging information (not tracked)
 ├── src/                         # Source packages
-│   ├── loon-e-coms/             # Loon-E Base Station communication
-│   ├── loon-e-control/          # Loon-E Control Code
-│   ├── loon-e-map/              # Loon-E Mapping Code
-│   ├── loon-e-motor/            # Loon-E Motor Code
-│   ├── loon-e-planning/         # Loon-E Planning Code
-│   ├── zed-ros2-examples/       # Zedx example testing code
-│   ├── zed-ros2-wrapper/        # Zedx wrapper (required for vision)
+│   ├── loone/                   # Main boat package (ament_python)
+│   │   ├── config/              # Node parameters (config.yaml), nav2 / SLAM / navsat configs, waypoints
+│   │   ├── launch/              # Launch files
+│   │   ├── loone/               # Python nodes
+│   │   │   ├── hardware/        # HardwareController + propellor, ball launcher and battery controllers
+│   │   │   ├── hardware_node.py # ROS interface to the hardware
+│   │   │   ├── demo.py          # One-shot hardware demo (hardware_test)
+│   │   │   └── terminal_node.py # Ball launcher / LED control from terminal input
+│   │   ├── model/               # ONNX model
+│   │   ├── rviz/                # RViz config
+│   │   └── test/                # pytest suite
+│   ├── loone_interfaces/        # Custom messages (Phone, Task)
+│   ├── loone_urdf/              # Robot description, package le1000_urdf_t4 (submodule)
+│   └── zedx/                    # ZED camera ROS 2 wrapper (submodule)
+├── tools/                       # Scripts for hardware management, calibration and diagnostics
 ├── wiki/                        # Additional documentation
 │   ├── setup/                   # Setup documentation
-│   └── CONTRIBUTING.md/         # Instructions on contributing to this repository
-├── LICENSE/                     # GPL-3.0 license
+│   ├── CONTRIBUTING.md          # Instructions on contributing to this repository
+│   └── TODO.md                  # Outstanding work (e.g. replacing the phone GPS source)
+├── CAMERA_NOT_WORKING.md        # Debugging the ZED X camera
+├── DEBUG.md                     # Debugging the PWM hardware (ESCs, servos)
+├── requirements.txt             # Python dependencies
+├── LICENSE                      # MIT license
 └── README.md                    # Primary documentation
 ```
 
 ## Contributing
 
-See the [contribution guide](wiki/CONTRIBUTING) to see how you can contribute!
+See the [contribution guide](wiki/CONTRIBUTING.md) to see how you can contribute!
 
 ## fast build
 colcon build --symlink-install --packages-skip zed_debug

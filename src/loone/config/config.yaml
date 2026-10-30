@@ -1,26 +1,4 @@
 # Configurations
-/task:
-  ros__parameters:
-    task: [2.1]
-    # GPS course, one entry per waypoint. These must be the same length and
-    # non-empty -- task.py raises at startup otherwise.
-    latitude: [63.440734, 63.440460]
-    longitude: [10.423366, 10.422980]
-    error_lat: 0.00001 # Allowed deviation in latitude from GPS point
-    error_long: 0.00002 # Allowed deviation in longitude from GPS point
-    camera_fov: 40.0 # Expected horizontal distance visible in camera frame, metres
-    # ZED object detection topic; follows the camera_name/zed_node_name launch args.
-    objects_topic: "/zedx/zed_node/obj_det/objects"
-    has_map: False
-    has_camera: True
-    timer_period: 0.5
-
-/phone:
-  ros__parameters:
-    phone_port: 5000 # Port on the phone to route to the computer
-    computer_port: 5000 # Port on the computer to route to the phone
-    host: "127.0.0.1" # Host for the phone node (default is localhost)
-
 /hardware_node:
   ros__parameters:
     timer_period: 0.5 # Timer period in seconds
@@ -51,8 +29,3 @@
     dw_max: 21.0      # Max voltage of Dewalt battery
     br_min: 13.2      # Min voltage of Blue Robotics battery
     br_max: 16.8      # Max voltage of Blue Robotics battery
-
-/path_planning:
-  ros__parameters:
-    dist: 4
-    radius: 2

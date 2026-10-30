@@ -1,9 +1,9 @@
 # loone
 
 `loone` is [Humber ASV](https://humberasv.ca/)'s `ament_python` colcon package for
-the Loon-E boat: the nav2 + `ros2_control` "chained controls" stack that turns
-navigation goals into propeller/rudder PWM, plus the phone GPS bridge and
-battery telemetry. See the [repo root README](../../README.md) for build/setup
+the Loon-E boat: `hardware_node` (propellers, ball launcher, status LED, battery
+telemetry and RC state over the PCA9685 / INA3221), SLAM with the ZED X camera, and
+the nav2 configuration. See the [repo root README](../../README.md) for build/setup
 instructions common to the whole workspace.
 
 ## Constraints

@@ -4,14 +4,15 @@
 #
 # Deliberately NOT here:
 #   * amcl / map_server  -> SLAM Toolbox already provides the map and map->odom TF.
-#   * robot_state_publisher / controllers -> see bringup.launch.py + ros2_control.yaml.
+#   * robot_state_publisher -> see launch.py.
 #
 # Frames assumed (see le1000_urdf_t4.urdf.xacro, src/loone_urdf): global map frame = "map", odom frame =
 # "odom", robot base = "base_link". Obstacles come from the "/scan" LaserScan that
 # depth_to_laserscan synthesizes from the ZED depth image.
 #
-# nav2 controller_server publishes geometry_msgs/Twist on /cmd_vel, which thrust_mixer
-# consumes. Keep the velocity limits below matched between controller + smoother.
+# nav2 controller_server publishes geometry_msgs/Twist on /cmd_vel. Nothing consumes
+# it yet (see wiki/TODO.md). Keep the velocity limits below matched between
+# controller + smoother.
 
 # ----------------------------------------------------------------------------------
 bt_navigator:
@@ -31,7 +32,7 @@ bt_navigator:
 controller_server:
   ros__parameters:
     use_sim_time: false
-    controller_frequency: 10.0   # Hz; keep <= thrust_mixer publish_rate (20 Hz)
+    controller_frequency: 10.0   # Hz; keep <= the /cmd_vel consumer's update rate
     min_x_velocity_threshold: 0.001
     min_theta_velocity_threshold: 0.001
     failure_tolerance: 0.3

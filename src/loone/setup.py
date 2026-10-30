@@ -32,11 +32,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'phone = loone.phone:main',
-            'task = loone.task:main',
-            'path_planning = loone.path_planning:main',
             'hardware_node = loone.hardware_node:main',
-            'hardware_test = loone.test:main',
+            'hardware_test = loone.demo:main',
+            'terminal_node = loone.terminal_node:main',
         ],
     },
 )

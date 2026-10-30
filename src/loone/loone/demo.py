@@ -32,17 +32,17 @@ class HardwareTest(Node):
                         f"{state.location} battery: {round(state.percentage * 100)}% "
                         f"({state.voltage:.1f} V)")
 
-            # self.get_logger().info("Motors...")
-            # hardware.propellors.forward()
-            # time.sleep(0.5)
-            # hardware.propellors.stop()
-            # input('Load ball, then press Enter to run the loader.')
-            # hardware.ball_launcher.load(time=5, power=0.1)
+            self.get_logger().info("Motors...")
+            hardware.propellors.forward()
+            time.sleep(0.5)
+            hardware.propellors.stop()
+            input('Load ball, then press Enter to run the loader.')
+            hardware.ball_launcher.load(time=5, power=0.1)
 
-            # input('Press Enter to launch the ball.')
-            # hardware.ball_launcher.launch(time=5, power=)
+            input('Press Enter to launch the ball.')
+            hardware.ball_launcher.launch(time=5, power=0.5)
 
-            # hardware.ball_launcher.cancel()
+            hardware.ball_launcher.cancel()
             
             while True:
                 self.get_logger().info("Party mode!")

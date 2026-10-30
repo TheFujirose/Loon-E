@@ -2,7 +2,7 @@
 
 Loads rviz/loone.rviz -- a copy of the stock zed_display_rviz2 stereo config
 with every hardcoded '/zed/...' topic repointed at '/zedx/...' to match the
-camera_name used by bringup.launch.py / slam_launch.py. Run bringup first;
+camera_name used by launch.py / slam_launch.py. Run one of those first;
 this only opens the viewer, it does not start the camera itself.
 
 Usage:

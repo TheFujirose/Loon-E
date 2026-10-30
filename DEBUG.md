@@ -25,8 +25,9 @@ PCA9685 at I2C address `0x40`, running at 50 Hz:
 | 7 | Free (used for clock calibration) | — |
 
 The pulse ranges, PWM frequency and `pca_clock` are set in
-`src/loone/config/config.yaml` (for `hardware_node`) and passed directly to
-`HardwareController(...)` in `src/loone/loone/test.py`.
+`src/loone/config/config.yaml` (for `hardware_node`), passed directly to
+`HardwareController(...)` in `src/loone/loone/demo.py`, and (`freq` and
+`pca_clock` only) set as parameter defaults in `src/loone/loone/terminal_node.py`.
 
 **Blue Robotics Basic ESC signal**
 ([product page](https://bluerobotics.com/store/thrusters/speed-controllers/besc30-r3/)):
@@ -89,9 +90,10 @@ python3 tools/pca_clock_cal.py [channel]    # default channel 7
    Set in config.yaml:  pca_clock: 25760154
    ```
 
-5. Put that value in **both** places:
+5. Put that value in **all three** places:
    - `src/loone/config/config.yaml` → `pca_clock: <value>`
-   - `src/loone/loone/test.py` → `HardwareController(..., pca_clock=<value>)`
+   - `src/loone/loone/demo.py` → `HardwareController(..., pca_clock=<value>)`
+   - `src/loone/loone/terminal_node.py` → `self.declare_parameter('pca_clock', <value>)`
 6. Rebuild (below).
 
 The value only depends on the PCA9685 board, so redo this only if the board is
