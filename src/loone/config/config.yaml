@@ -22,6 +22,10 @@
     carriage_range: 180 # Ball carriage servo travel (degrees): 180 or 270 model
     launcher_min: 1100  # Ball launcher ESC min pulse width (µs)
     launcher_max: 1900  # Ball launcher ESC max pulse width (µs)
+    load_time: 5.0      # Seconds the ball launcher wheel runs backwards to load
+    load_power: 0.1     # Default ball launcher throttle while loading (0 to 1)
+    launch_time: 5.0    # Seconds the ball launcher wheel keeps running after firing
+    launch_power: 0.1   # Default ball launcher throttle while firing (0 to 1)
     rudder_min: 1220  # Rudder servo min pulse width (µs)
     rudder_max: 1820  # Rudder servo max pulse width (µs)
 

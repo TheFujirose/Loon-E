@@ -110,7 +110,10 @@ def generate_launch_description():
         executable='hardware_node',
         name='hardware_node',
         output='screen',
-        parameters=[config, {'use_sim_time': use_sim_time}],
+        parameters=[config, {
+            'use_sim_time': use_sim_time,
+            'odom_topic': ['/', camera_name, '/', zed_node_name, '/odom'],
+        }],
         condition=UnlessCondition(sim),
     )
 

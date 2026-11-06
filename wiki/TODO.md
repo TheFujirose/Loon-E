@@ -3,39 +3,41 @@
 ## Replace the phone GPS source
 
 GPS used to come from a phone, through the `phone` node (`src/loone/loone/phone.py`).
-That node was removed in commit `c91a52a`, so right now **nothing on the boat
-publishes position or heading**. The new GPS source has to fill the two topics the
-phone node used to publish:
+That node was removed in commit `c91a52a` along with the phone itself, so right now
+**nothing on the boat publishes latitude or longitude**. The sensor that replaces it
+isn't decided; `src/loone/loone/hardware/gps.py` is a shell for it.
 
-| Topic | Type | Contents | Used by |
-|-------|------|----------|---------|
-| `/navsatfix` | `sensor_msgs/NavSatFix` | Latitude / longitude fix, `header.frame_id = 'gps_link'` | `navsat_transform` (remapped from `gps/fix` in `launch/launch.py`) |
-| `/phone` | `std_msgs/Float32MultiArray` | `[lat, long, speed, heading]` | `hardware_node`, which reads the heading (index 3) for drive command 3 |
+Speed and heading now come from the ZED's odometry instead. That heading is relative
+to where the camera started, not to true north, until something anchors it.
 
-Until this is done:
-
-- `navsat_transform` gets no fixes, so GPS waypoints can't be converted to map
-  coordinates (`/fromLL`, `/toLL`).
-- `hardware_node` has no heading, so drive command 3 always stops the propellers
-  instead of driving.
+| Consumer | Needs | Today |
+|----------|-------|-------|
+| `navsat_transform` | `sensor_msgs/NavSatFix` on `/navsatfix`, `header.frame_id = 'gps_link'` (remapped from `gps/fix` in `launch/launch.py`) | No fixes, so GPS waypoints can't be converted to map coordinates (`/fromLL`, `/toLL`) |
+| Basestation | Latitude / longitude, read from index 0 and 1 of `/phone` (`[lat, long, speed, heading]`) | Stay at 0 on the website |
 
 What's needed:
 
-- [ ] Pick the GPS hardware and write a node for it (or use an existing ROS 2 driver).
+- [ ] Pick the GPS hardware and implement `loone/hardware/gps.py` (if it can't share the
+      bus through `HardwareController`, write a node or use an existing ROS 2 driver instead).
 - [ ] Publish `NavSatFix` on `/navsatfix`, stamped with the `gps_link` frame. If the
       driver publishes on another topic, update the `gps/fix` remapping in `launch/launch.py`.
 - [ ] Measure the antenna position and set the `gps_link` joint in the URDF
       (`src/loone_urdf`), so `navsat_transform` removes the right offset.
 - [ ] Fill in a real `position_covariance` if the receiver reports one (the phone sent
       `COVARIANCE_TYPE_UNKNOWN`).
-- [ ] Give `hardware_node` a heading again: either publish the same
-      `[lat, long, speed, heading]` array on `/phone`, or change `phone_callback` in
-      `loone/hardware_node.py` to read from the new source (and rename the topic,
-      since it's no longer a phone).
-- [ ] Add the node to `launch/launch.py` (with `condition=UnlessCondition(sim)` like
-      `hardware_node`) and its parameters to `config/config.yaml`.
-- [ ] Add a test for the node in `src/loone/test/` (the old `test_phone.py` was removed
-      with the phone node).
+- [ ] Point the basestation's latitude / longitude at the new source.
+- [ ] Decide whether a true heading should replace the ZED's relative one in
+      `hardware_node.odom_callback` and on the website's compass.
+- [ ] If it's a new node, add it to `launch/launch.py` (with
+      `condition=UnlessCondition(sim)` like `hardware_node`) and its parameters to
+      `config/config.yaml`.
+- [ ] Add a test for it in `src/loone/test/` (the old `test_phone.py` was removed with
+      the phone node).
+
+## Write the task logic
+
+There are no tasks right now. `src/loone/loone/task.py` is a shell for them, and until
+it exists `terminal_node` relays `motor_command` and `ball_launcher_command` typed by hand.
 
 ## Connect nav2 to the propellers
 
