@@ -1,3 +1,4 @@
+import math
 from typing import Protocol
 
 from adafruit_ina3221 import INA3221
@@ -85,6 +86,30 @@ class BatteryController:
             msg.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_OVERVOLTAGE
         else:
             msg.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_GOOD
+        msg.location = location
+        return msg
+
+    @staticmethod
+    def unavailable(location: str, stamp=None) -> BatteryState:
+        """Build a BatteryState saying the sensor gave no reading for this battery.
+
+        present=False with NaN measurements is the BatteryState convention for "not
+        measured". It lets subscribers tell a dead sensor apart from a flat battery,
+        which a 0% reading could not.
+
+        Args:
+            location: BatteryState.location label.
+            stamp: Optional header stamp (e.g. node.get_clock().now().to_msg()).
+        """
+        msg = BatteryState()
+        if stamp is not None:
+            msg.header.stamp = stamp
+        msg.voltage = math.nan
+        msg.percentage = math.nan
+        msg.present = False
+        msg.power_supply_status = BatteryState.POWER_SUPPLY_STATUS_UNKNOWN
+        msg.power_supply_technology = BatteryState.POWER_SUPPLY_TECHNOLOGY_UNKNOWN
+        msg.power_supply_health = BatteryState.POWER_SUPPLY_HEALTH_UNKNOWN
         msg.location = location
         return msg
 

@@ -12,9 +12,10 @@ controller calls and controller state back into topics:
         .set_led()      status LED
 
 Subscribes:
-    phone                  (Float32MultiArray: [lat, long, speed, heading])
+    <odom_topic>           (nav_msgs/Odometry, ZED odometry; heading only)
     motor_command          (Float32MultiArray: [command, target_heading, dir])
-    ball_launcher_command  (Int8: 0 stop, 1 load, 2 launch)
+    ball_launcher_command  (Float32MultiArray: [command, power]; command 0 stop,
+                            1 load, 2 launch; power <= 0 uses the configured default)
 Publishes:
     motor          (Float32MultiArray: [prop_l, prop_r, rudder] servo fractions)
     led            (ColorRGBA)
@@ -22,17 +23,37 @@ Publishes:
     battery_status/prop_r  (sensor_msgs/BatteryState, Dewalt, right propulsion)
     battery_status/main    (sensor_msgs/BatteryState, Blue Robotics, primary battery)
     rc_state       (Int8MultiArray: [auto, estop] raw line levels)
+
+The battery topics report present=False when the INA3221 can't be read, so that
+subscribers can tell a failed sensor from a flat battery.
 """
 
 import math
 import threading
 
+from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import BatteryState
-from std_msgs.msg import Float32MultiArray, Int8, Int8MultiArray, ColorRGBA
+from std_msgs.msg import Float32MultiArray, Int8MultiArray, ColorRGBA
 
+from loone.hardware.battery import BatteryController
 from loone.hardware.hardware_controller import HardwareController
+
+# Seconds between repeats of an I2C error. A dead bus fails on every timer tick.
+BUS_ERROR_LOG_PERIOD = 5.0
+
+
+def yaw_to_heading(x: float, y: float, z: float, w: float) -> float:
+    """Convert an ENU orientation quaternion to a heading in degrees [0, 360).
+
+    Yaw is counter-clockwise from +x; heading is clockwise from +y. On the ZED's odom
+    frame this is relative to where the camera started, not to true north, until
+    something (GPS, compass) anchors that frame.
+    """
+    yaw = math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+    return (90.0 - math.degrees(yaw)) % 360.0
 
 
 class HardwareNode(Node):
@@ -64,9 +85,18 @@ class HardwareNode(Node):
         self.declare_parameter('br_min', 13.2)   # Blue Robotics (main) battery min voltage
         self.declare_parameter('br_max', 16.8)   # Blue Robotics (main) battery max voltage
         self.declare_parameter('i2c', True)
+        self.declare_parameter('odom_topic', '/zedx/zed_node/odom')  # ZED odometry, for heading
+        self.declare_parameter('load_time', 5.0)     # Seconds the wheel runs backwards to load
+        self.declare_parameter('load_power', 0.1)    # Default launcher throttle while loading
+        self.declare_parameter('launch_time', 5.0)   # Seconds the wheel runs after firing
+        self.declare_parameter('launch_power', 0.1)  # Default launcher throttle while firing
 
         timer_period = self.get_parameter('timer_period').value
         self.i2c = self.get_parameter('i2c').value
+        self.load_time = self.get_parameter('load_time').value
+        self.load_power = self.get_parameter('load_power').value
+        self.launch_time = self.get_parameter('launch_time').value
+        self.launch_power = self.get_parameter('launch_power').value
 
         # ---- Hardware bring-up ----
         self.hardware = None
@@ -107,13 +137,22 @@ class HardwareNode(Node):
         self.current_heading = math.nan
         self.command = None
 
+        # True while reads of a working INA3221 are failing, so that a dropout is logged
+        # once rather than on every timer tick.
+        self.battery_read_failed = False
+
         # Ball launcher sequences block for seconds, so they run on their own thread
         # to keep the RC-state / LED timers (and e-stop handling) responsive.
         self.ball_thread = None
 
-        self.phone_sub = self.create_subscription(Float32MultiArray, 'phone', self.phone_callback, 10)
+        # Best effort matches the ZED's reliable publisher too, and only the newest
+        # heading is worth having.
+        self.odom_sub = self.create_subscription(
+            Odometry, self.get_parameter('odom_topic').value, self.odom_callback,
+            QoSProfile(depth=1, reliability=QoSReliabilityPolicy.BEST_EFFORT))
         self.task_sub = self.create_subscription(Float32MultiArray, 'motor_command', self.task_callback, 10)
-        self.ball_sub = self.create_subscription(Int8, 'ball_launcher_command', self.ball_launcher_callback, 10)
+        self.ball_sub = self.create_subscription(
+            Float32MultiArray, 'ball_launcher_command', self.ball_launcher_callback, 10)
         self.motor_pub = self.create_publisher(Float32MultiArray, 'motor', 10)
         self.led_pub = self.create_publisher(ColorRGBA, 'led', 10)
         self.prop_l_battery_pub = self.create_publisher(BatteryState, 'battery_status/prop_l', 10)
@@ -122,9 +161,9 @@ class HardwareNode(Node):
 
         # Raw autonomy / e-stop line levels. This node already owns board.D12 and
         # D13 for the status LEDs, and two processes opening the same gpiochip
-        # line fails with "Device or resource busy" under libgpiod, so task.py
-        # reads the switches from here instead of opening them a second time.
-        # task.py fails closed if this goes stale, so publish at a steady rate.
+        # line fails with "Device or resource busy" under libgpiod, so terminal_node
+        # reads the switches from here instead of opening them a second time. It
+        # fails closed if this goes stale, so publish at a steady rate.
         self.rc_state_pub = self.create_publisher(Int8MultiArray, 'rc_state', 10)
 
         ## Publish
@@ -132,18 +171,51 @@ class HardwareNode(Node):
         self.rc_state_timer = self.create_timer(timer_period, self.publish_rc_state)
         self.led_state_timer = self.create_timer(timer_period, self.publish_led)
         self.led_timer = self.create_timer(timer_period, self.set_led)
+        # motor_command only arrives when something is commanding the boat, but the
+        # basestation treats a silent 'motor' topic as lost telemetry.
+        self.motor_timer = self.create_timer(timer_period, self.publish_motor)
         self.get_logger().info('hardware_node ready.')
+
+    # ------------------------------------------------------------------ errors
+
+    def log_bus_error(self, action: str, error: Exception) -> None:
+        """Log a failed I2C call, rate limited.
+
+        An uncaught error in any callback escapes rclpy.spin and ends this node, taking
+        motor control with it. The INA3221 shares the bus with the PCA9685, so one flaky
+        sensor can make any bus call fail. Keep running and report it instead.
+        """
+        self.get_logger().error(
+            f"I2C error while {action}: {error}", throttle_duration_sec=BUS_ERROR_LOG_PERIOD)
 
     # ------------------------------------------------------------------ publishers
 
     def publish_battery(self) -> None:
         """Publish a sensor_msgs/BatteryState (voltage, percentage, health) per battery.
 
-        No-op if the INA3221 failed to initialize (see HardwareController._init_busio).
+        Each battery reports present=False if the INA3221 failed to initialize (see
+        HardwareController._init_busio) or can't be read. A sensor that drops out while
+        running recovers by itself as soon as a read succeeds again.
         """
-        if self.hardware is None or self.hardware.battery is None:
-            return
-        prop_l, prop_r, main = self.hardware.battery.states(self.get_clock().now().to_msg())
+        stamp = self.get_clock().now().to_msg()
+        battery = None if self.hardware is None else self.hardware.battery
+        states = None
+        if battery is not None:
+            try:
+                states = battery.states(stamp)
+            except Exception as e:  # Any sensor failure must not take the motors down.
+                if not self.battery_read_failed:
+                    self.get_logger().error(f"Lost the INA3221 battery sensor: {e}")
+                self.battery_read_failed = True
+            else:
+                if self.battery_read_failed:
+                    self.get_logger().info("INA3221 battery sensor recovered.")
+                self.battery_read_failed = False
+
+        if states is None:
+            states = (BatteryController.unavailable(location, stamp)
+                      for location in ('prop_l', 'prop_r', 'main'))
+        prop_l, prop_r, main = states
         self.prop_l_battery_pub.publish(prop_l)
         self.prop_r_battery_pub.publish(prop_r)
         self.main_battery_pub.publish(main)
@@ -178,7 +250,11 @@ class HardwareNode(Node):
                 red = green = False # off
                 self.led_state = True
 
-        self.hardware.set_led(red, green)
+        try:
+            self.hardware.set_led(red, green)
+        except OSError as e:
+            self.log_bus_error('setting the status LED', e)
+            return
         self.led.r = 1.0 if red else 0.0
         self.led.g = 1.0 if green else 0.0
 
@@ -198,29 +274,38 @@ class HardwareNode(Node):
         msg = Float32MultiArray()
         # Fractions (0 reverse, 0.5 neutral, 1 forward) rather than throttles, to keep
         # the [left, right, rudder] wire format the 'motor' subscribers already expect.
+        try:
+            left = self.hardware.prop_l.fraction
+            right = self.hardware.prop_r.fraction
+        except OSError as e:
+            self.log_bus_error('reading the propeller state', e)
+            return
+        # A fraction is None while its PWM channel is off, e.g. if the PCA9685 reset.
+        if left is None or right is None:
+            self.get_logger().error(
+                "Propeller PWM channel is off, not publishing motor state.",
+                throttle_duration_sec=BUS_ERROR_LOG_PERIOD)
+            return
         msg.data = [
-            self.hardware.prop_l.fraction,
-            self.hardware.prop_r.fraction,
-            # The rudder servo is disconnected, so there is no real fraction to report.
-            # Publish the neutral placeholder to keep the wire format stable.
+            left,
+            right,
+            # TODO: publish the real fraction when the rudder servo is added back.
+            # Until then this neutral placeholder keeps the wire format stable.
             0.5,
         ]
         self.motor_pub.publish(msg)
-        self.get_logger().info(f"Motor: {msg.data}")
+        self.get_logger().debug(f"Motor: {msg.data}")
 
     # ------------------------------------------------------------------ callbacks
 
-    def phone_callback(self, msg) -> None:
-        """Handle incoming phone telemetry and update the current heading.
+    def odom_callback(self, msg) -> None:
+        """Update the current heading from ZED odometry.
 
         Args:
-            msg: Float32MultiArray where
-                index 0 is latitude
-                index 1 is longitude
-                index 2 is speed
-                index 3 is heading.
+            msg: nav_msgs/Odometry. See yaw_to_heading for what the heading is relative to.
         """
-        self.current_heading = msg.data[3]
+        q = msg.pose.pose.orientation
+        self.current_heading = yaw_to_heading(q.x, q.y, q.z, q.w)
 
     def task_callback(self, msg) -> None:
         """Handle incoming task commands and drive the propellers.
@@ -240,30 +325,34 @@ class HardwareNode(Node):
             return
         propellors = self.hardware.propellors
 
-        match self.command:
-            case -1: #reverse
-                propellors.reverse()
+        try:
+            match self.command:
+                case -1: #reverse
+                    propellors.reverse()
 
-            case 0: #stop
-                propellors.stop()
-
-            case 1: #forward
-                propellors.forward()
-
-            case 2: #turn
-                if direction != -999:
-                    propellors.turn_in_place(direction)
-
-            case 3: #drive
-                if math.isnan(self.current_heading):
-                    self.get_logger().warning("No phone heading yet, stopping instead of driving.")
+                case 0: #stop
                     propellors.stop()
-                else:
-                    propellors.drive(self.current_heading, target_heading)
 
-            case _: #other
-                self.get_logger().info("Improper command, no action")
-                return
+                case 1: #forward
+                    propellors.forward()
+
+                case 2: #turn
+                    if direction != -999:
+                        propellors.turn_in_place(direction)
+
+                case 3: #drive
+                    if math.isnan(self.current_heading):
+                        self.get_logger().warning("No ZED heading yet, stopping instead of driving.")
+                        propellors.stop()
+                    else:
+                        propellors.drive(self.current_heading, target_heading)
+
+                case _: #other
+                    self.get_logger().info("Improper command, no action")
+                    return
+        except OSError as e:
+            self.log_bus_error(f'running motor command {self.command}', e)
+            return
 
         self.publish_motor()
 
@@ -271,22 +360,39 @@ class HardwareNode(Node):
         """Handle a ball launcher command.
 
         Args:
-            msg: Int8 where 0 stops (aborting any running sequence), 1 loads a
-                ball and 2 launches it.
+            msg: Float32MultiArray where index 0 is the command (0 stops, aborting any
+                running sequence; 1 loads a ball; 2 launches it) and index 1 is the
+                launcher throttle in (0, 1], or <= 0 (or absent) for the default.
         """
         if self.hardware is None:
             self.get_logger().info("I2C disabled, no action")
             return
         ball_launcher = self.hardware.ball_launcher
 
-        match msg.data:
+        if len(msg.data) == 0:
+            self.get_logger().info("Improper ball launcher command, no action")
+            return
+        command = int(msg.data[0])
+        power = msg.data[1] if len(msg.data) > 1 else 0.0
+        if power > 1.0:
+            self.get_logger().error(f"Ball launcher power must be at most 1, got {power}.")
+            return
+
+        match command:
             case 0: #stop
-                ball_launcher.cancel()
+                try:
+                    ball_launcher.cancel()
+                except OSError as e:
+                    self.log_bus_error('stopping the ball launcher', e)
                 return
             case 1: #load
                 sequence = ball_launcher.load
+                kwargs = {'time': self.load_time,
+                          'power': power if power > 0.0 else self.load_power}
             case 2: #launch
                 sequence = ball_launcher.launch
+                kwargs = {'time': self.launch_time,
+                          'power': power if power > 0.0 else self.launch_power}
             case _: #other
                 self.get_logger().info("Improper ball launcher command, no action")
                 return
@@ -294,7 +400,7 @@ class HardwareNode(Node):
         if self.ball_thread is not None and self.ball_thread.is_alive():
             self.get_logger().warning("Ball launcher busy, ignoring command.")
             return
-        self.ball_thread = threading.Thread(target=sequence, daemon=True)
+        self.ball_thread = threading.Thread(target=sequence, kwargs=kwargs, daemon=True)
         self.ball_thread.start()
 
     def shutdown(self) -> None:

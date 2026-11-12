@@ -35,6 +35,7 @@ setup(
             'hardware_node = loone.hardware_node:main',
             'hardware_test = loone.demo:main',
             'terminal_node = loone.terminal_node:main',
+            'task = loone.task:main',
         ],
     },
 )

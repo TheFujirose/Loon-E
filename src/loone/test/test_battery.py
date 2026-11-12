@@ -1,3 +1,4 @@
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -30,6 +31,16 @@ class TestToBatteryState:
 
         assert msg.percentage == 1.0
         assert msg.power_supply_health == BatteryState.POWER_SUPPLY_HEALTH_OVERVOLTAGE
+
+
+def test_unavailable_says_the_battery_was_not_measured():
+    msg = BatteryController.unavailable('main')
+
+    assert msg.present is False
+    assert math.isnan(msg.voltage)
+    assert math.isnan(msg.percentage)
+    assert msg.location == 'main'
+    assert msg.power_supply_health == BatteryState.POWER_SUPPLY_HEALTH_UNKNOWN
 
 
 def test_battery_voltage_includes_shunt_drop():

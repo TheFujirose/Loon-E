@@ -52,10 +52,11 @@ Loon-E/
 │   │   ├── config/              # Node parameters (config.yaml), nav2 / SLAM / navsat configs, waypoints
 │   │   ├── launch/              # Launch files
 │   │   ├── loone/               # Python nodes
-│   │   │   ├── hardware/        # HardwareController + propellor, ball launcher and battery controllers
+│   │   │   ├── hardware/        # HardwareController + propellor, ball launcher and battery controllers (gps.py is a shell)
 │   │   │   ├── hardware_node.py # ROS interface to the hardware
 │   │   │   ├── demo.py          # One-shot hardware demo (hardware_test)
-│   │   │   └── terminal_node.py # Ball launcher / LED control from terminal input
+│   │   │   ├── task.py          # Task logic (shell, not implemented yet)
+│   │   │   └── terminal_node.py # Relays commands typed in a terminal to hardware_node
 │   │   ├── model/               # ONNX model
 │   │   ├── rviz/                # RViz config
 │   │   └── test/                # pytest suite

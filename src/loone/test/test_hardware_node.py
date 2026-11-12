@@ -1,6 +1,6 @@
 import math
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from sensor_msgs.msg import BatteryState
@@ -49,6 +49,16 @@ def _task(command, target_heading=0.0, direction=0.0):
     return SimpleNamespace(data=[float(command), float(target_heading), float(direction)])
 
 
+def _ball(command, power=0.0):
+    return SimpleNamespace(data=[float(command), float(power)])
+
+
+def _odom(yaw_degrees):
+    half = math.radians(yaw_degrees) / 2.0
+    orientation = SimpleNamespace(x=0.0, y=0.0, z=math.sin(half), w=math.cos(half))
+    return SimpleNamespace(pose=SimpleNamespace(pose=SimpleNamespace(orientation=orientation)))
+
+
 # ── Construction tests ─────────────────────────────────────────────────────────
 
 class TestInit:
@@ -70,8 +80,26 @@ class TestInit:
         }
         assert node.hardware is controller_mock.return_value
 
-    def test_heading_unknown_until_phone_data(self, node):
+    def test_heading_unknown_until_odometry(self, node):
         assert math.isnan(node.current_heading)
+
+
+# ── Heading tests ───────────────────────────────────────────────────────────────
+
+class TestOdomCallback:
+    """odom_callback() turns ENU yaw into a clockwise-from-+y heading."""
+
+    @pytest.mark.parametrize('yaw, heading', [
+        (90.0, 0.0),     # facing +y
+        (0.0, 90.0),     # facing +x
+        (-90.0, 180.0),  # facing -y
+        (180.0, 270.0),  # facing -x
+    ])
+    def test_converts_yaw_to_heading(self, node, yaw, heading):
+        node.odom_callback(_odom(yaw))
+
+        # Near 0 the result may land just under 360.
+        assert (node.current_heading + 1e-6) % 360.0 == pytest.approx(heading, abs=1e-3)
 
 
 # ── motor_command tests ────────────────────────────────────────────────────────
@@ -102,16 +130,19 @@ class TestTaskCallback:
         node.task_callback(_task(2, direction=-999))
         node.hardware.propellors.turn_in_place.assert_not_called()
 
-    def test_drive_uses_phone_heading(self, node):
-        node.phone_callback(SimpleNamespace(data=[0.0, 0.0, 1.5, 270.0]))
+    def test_drive_uses_odometry_heading(self, node):
+        node.odom_callback(_odom(180.0))
 
         node.task_callback(_task(3, target_heading=90))
 
-        node.hardware.propellors.drive.assert_called_once_with(270.0, 90.0)
+        node.hardware.propellors.drive.assert_called_once()
+        current, target = node.hardware.propellors.drive.call_args.args
+        assert current == pytest.approx(270.0)
+        assert target == 90.0
         node.motor_pub.publish.assert_called_once()
 
-    def test_drive_stops_without_phone_heading(self, node):
-        # No phone data yet: driving on a NaN heading would be meaningless.
+    def test_drive_stops_without_heading(self, node):
+        # No odometry yet: driving on a NaN heading would be meaningless.
         node.task_callback(_task(3, target_heading=90))
 
         node.hardware.propellors.drive.assert_not_called()
@@ -139,33 +170,64 @@ class TestPublishMotor:
         # Float32MultiArray.data is a float32 array.array, not a list.
         assert list(msg.data) == pytest.approx([0.75, 0.25, 0.5])
 
+    def test_timer_publishes_without_any_command(self, node):
+        # The basestation reads a silent 'motor' topic as lost telemetry.
+        assert node.publish_motor in [timer.callback for timer in node.timers]
+
+    def test_stays_up_when_channel_is_off(self, node):
+        node.hardware.prop_l.fraction = None
+
+        node.publish_motor()
+
+        node.motor_pub.publish.assert_not_called()
+
 
 # ── ball_launcher_command tests ────────────────────────────────────────────────
 
 class TestBallLauncherCallback:
 
     def test_stop_cancels(self, node):
-        node.ball_launcher_callback(SimpleNamespace(data=0))
+        node.ball_launcher_callback(_ball(0))
         node.hardware.ball_launcher.cancel.assert_called_once()
 
-    @pytest.mark.parametrize('command, sequence', [(1, 'load'), (2, 'launch')])
-    def test_runs_sequence_on_a_thread(self, node, command, sequence):
-        node.ball_launcher_callback(SimpleNamespace(data=command))
+    @pytest.mark.parametrize('command, sequence, time, power', [
+        (1, 'load', 5.0, 0.1),
+        (2, 'launch', 5.0, 0.1),
+    ])
+    def test_runs_sequence_on_a_thread_with_defaults(self, node, command, sequence, time, power):
+        node.ball_launcher_callback(_ball(command))
         node.ball_thread.join(timeout=1.0)
 
-        getattr(node.hardware.ball_launcher, sequence).assert_called_once()
+        getattr(node.hardware.ball_launcher, sequence).assert_called_once_with(
+            time=time, power=power)
+
+    def test_command_can_choose_the_power(self, node):
+        node.ball_launcher_callback(_ball(2, power=0.5))
+        node.ball_thread.join(timeout=1.0)
+
+        node.hardware.ball_launcher.launch.assert_called_once_with(time=5.0, power=0.5)
+
+    def test_rejects_power_above_full_throttle(self, node):
+        node.ball_launcher_callback(_ball(2, power=1.5))
+
+        assert node.ball_thread is None
+
+    def test_ignores_empty_command(self, node):
+        node.ball_launcher_callback(SimpleNamespace(data=[]))
+
+        assert node.ball_thread is None
 
     def test_ignores_command_while_busy(self, node):
         node.ball_thread = MagicMock(is_alive=MagicMock(return_value=True))
 
-        node.ball_launcher_callback(SimpleNamespace(data=2))
+        node.ball_launcher_callback(_ball(2))
 
         node.hardware.ball_launcher.launch.assert_not_called()
 
     def test_stop_works_while_busy(self, node):
         node.ball_thread = MagicMock(is_alive=MagicMock(return_value=True))
 
-        node.ball_launcher_callback(SimpleNamespace(data=0))
+        node.ball_launcher_callback(_ball(0))
 
         node.hardware.ball_launcher.cancel.assert_called_once()
 
@@ -184,14 +246,92 @@ class TestPublishBattery:
         node.prop_r_battery_pub.publish.assert_called_once_with(prop_r)
         node.main_battery_pub.publish.assert_called_once_with(main)
 
-    def test_skips_publishing_when_ina_unavailable(self, node):
+    @staticmethod
+    def _published(node):
+        return [pub.publish.call_args[0][0] for pub in (
+            node.prop_l_battery_pub, node.prop_r_battery_pub, node.main_battery_pub)]
+
+    def test_reports_absent_when_ina_failed_at_startup(self, node):
         # hardware.battery is None when the INA3221 failed to initialize.
         node.hardware.battery = None
 
         node.publish_battery()
 
-        node.prop_l_battery_pub.publish.assert_not_called()
-        node.main_battery_pub.publish.assert_not_called()
+        assert [msg.present for msg in self._published(node)] == [False, False, False]
+        assert [msg.location for msg in self._published(node)] == ['prop_l', 'prop_r', 'main']
+
+    def test_reports_absent_without_hardware(self, node):
+        node.hardware = None
+
+        node.publish_battery()
+
+        assert [msg.present for msg in self._published(node)] == [False, False, False]
+
+    def test_dropout_reports_absent_instead_of_raising(self, node):
+        node.hardware.battery.states.side_effect = OSError('Remote I/O error')
+
+        node.publish_battery()
+
+        assert [msg.present for msg in self._published(node)] == [False, False, False]
+
+    def test_dropout_is_logged_once(self, node):
+        node.hardware.battery.states.side_effect = OSError('Remote I/O error')
+
+        node.publish_battery()
+        node.publish_battery()
+
+        node.get_logger().error.assert_called_once()
+
+    def test_recovers_after_dropout(self, node):
+        node.hardware.battery.states.side_effect = OSError('Remote I/O error')
+        node.publish_battery()
+
+        readings = BatteryState(), BatteryState(), BatteryState()
+        node.hardware.battery.states.side_effect = None
+        node.hardware.battery.states.return_value = readings
+        node.publish_battery()
+
+        node.prop_l_battery_pub.publish.assert_called_with(readings[0])
+        assert node.battery_read_failed is False
+
+
+# ── I2C failure tests ───────────────────────────────────────────────────────────
+
+class TestBusErrors:
+    """A bus error must never escape a callback: that would stop rclpy.spin."""
+
+    def test_led_keeps_last_state(self, node):
+        node.hardware.auto = False
+        node.hardware.estop = True
+        node.hardware.set_led.side_effect = OSError('Remote I/O error')
+
+        node.set_led()
+
+        assert (node.led.r, node.led.g) == (0.0, 0.0)
+        node.get_logger().error.assert_called_once()
+
+    def test_motor_state_read(self, node):
+        type(node.hardware.prop_l).fraction = PropertyMock(side_effect=OSError('Remote I/O error'))
+
+        node.publish_motor()
+
+        node.motor_pub.publish.assert_not_called()
+        node.get_logger().error.assert_called_once()
+
+    def test_motor_command(self, node):
+        node.hardware.propellors.forward.side_effect = OSError('Remote I/O error')
+
+        node.task_callback(_task(1))
+
+        node.motor_pub.publish.assert_not_called()
+        node.get_logger().error.assert_called_once()
+
+    def test_ball_launcher_stop(self, node):
+        node.hardware.ball_launcher.cancel.side_effect = OSError('Remote I/O error')
+
+        node.ball_launcher_callback(_ball(0))
+
+        node.get_logger().error.assert_called_once()
 
 
 # ── RC state / LED tests ────────────────────────────────────────────────────────
