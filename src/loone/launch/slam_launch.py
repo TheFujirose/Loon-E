@@ -59,7 +59,14 @@ def generate_launch_description():
             'publish_map_tf': 'false',  # SLAM Toolbox publishes map -> odom instead
             'use_sim_time': use_sim_time,
             'custom_object_detection_config_path': default_custom_object_detection_config_path,
-            'param_overrides': 'object_detection.custom_onnx_file:=' + default_model_onnx_path,
+            # debug.disable_nitros: with isaac_ros_nitros installed the wrapper publishes
+            # images through NITROS only and creates no image_transport publishers, so
+            # rgb/.../image/compressed disappears and the basestation's camera feed (which
+            # needs JPEGs over the Wi-Fi link) goes dark. Disabling NITROS brings it back.
+            'param_overrides': ';'.join([
+                'object_detection.custom_onnx_file:=' + default_model_onnx_path,
+                'debug.disable_nitros:=true',
+            ]),
         }.items()
     )
 
