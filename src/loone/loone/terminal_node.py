@@ -185,15 +185,15 @@ class TerminalNode(Node):
         An empty answer reuses the last power. Returns None if the input is invalid.
         """
         if not text:
-            text = input(f'Launch power (0-1) [{self.launch_power}]: ').strip()
+            text = input(f'Launch power (0-7) [{self.launch_power}]: ').strip()
             if not text:
                 return self.launch_power
         try:
-            power = float(text)
+            power = float(text) / 10
         except ValueError:
             power = math.nan
-        if not 0.0 < power <= 1.0:
-            self.get_logger().error(f"Launch power must be in (0, 1], got '{text}'.")
+        if not 0.0 < power <= 0.7: # limit to 0.1-0.7 range
+            self.get_logger().error(f"Launch power must be in (0, 0.7], got '{text}'.")
             return None
         return power
 
