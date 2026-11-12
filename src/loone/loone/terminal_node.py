@@ -15,6 +15,7 @@ launch file: launched nodes don't get the terminal's stdin.
 
 import math
 import threading
+import time
 
 import rclpy
 from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
@@ -38,12 +39,14 @@ class TerminalNode(Node):
 
         self.declare_parameter('freq', 50)               # PCA9685 PWM frequency (Hz)
         self.declare_parameter('pca_clock', 25760154)    # PCA9685 measured oscillator (keep in sync with config.yaml)
+        self.declare_parameter('load_delay', 1.0)        # Seconds to wait after 'load' is entered before loading starts
         self.declare_parameter('load_time', 5.0)         # Seconds the wheel runs backwards to draw a ball in
         self.declare_parameter('load_power', 0.1)        # Launcher throttle while loading
-        self.declare_parameter('launch_time', 5.0)       # Seconds the wheel keeps running after the carriage fires
+        self.declare_parameter('launch_time', 2.0)       # Seconds the wheel keeps running after the carriage fires
         self.declare_parameter('launch_power', 0.1)      # Default launch power, used when Enter is pressed at the prompt
         self.declare_parameter('led_period', 0.15)       # LED update / party mode step (s)
 
+        self.load_delay = self.get_parameter('load_delay').value
         self.load_time = self.get_parameter('load_time').value
         self.load_power = self.get_parameter('load_power').value
         self.launch_time = self.get_parameter('launch_time').value
@@ -107,15 +110,15 @@ class TerminalNode(Node):
         An empty answer reuses the last power. Returns None if the input is invalid.
         """
         if not text:
-            text = input(f'Launch power (0-1) [{self.launch_power}]: ').strip()
+            text = input(f'Launch power (0-7) [{self.launch_power}]: ').strip()
             if not text:
                 return self.launch_power
         try:
-            power = float(text)
+            power = float(text) / 10
         except ValueError:
             power = math.nan
-        if not 0.0 < power <= 1.0:
-            self.get_logger().error(f"Launch power must be in (0, 1], got '{text}'.")
+        if not 0.0 < power <= 0.7: # limit to 0.1-0.7 range
+            self.get_logger().error(f"Launch power must be in (0, 0.7], got '{text}'.")
             return None
         return power
 
@@ -132,9 +135,11 @@ class TerminalNode(Node):
                     continue
 
                 case 'l' | 'load':
+                    time.sleep(self.load_delay)
                     self.start('load', ball_launcher.load, time=self.load_time, power=self.load_power)
 
                 case 'f' | 'fire':
+                    time.sleep(self.load_delay)
                     if self.busy():
                         self.get_logger().warning("Ball launcher busy, ignoring command ('stop' to abort).")
                         continue
